@@ -1,0 +1,36 @@
+
+# Entornos virtuales (Python venv)
+
+.venv/
+venv/
+env/
+ENV/
+
+
+# Archivos temporales (bytecode y cache)
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+
+# Credenciales
+
+.env
+
+
+# Configuración de IntelliJ
+
+.idea/workspace.xml
+.idea/shelf/
+.idea/httpRequests/
+.idea/dataSources/
+.idea/dataSources.local.xml
+
+
+# Archivos de sistema
+
+.DS_Store
+Thumbs.db
