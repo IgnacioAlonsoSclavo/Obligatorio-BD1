@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS login (
     rol ENUM('administrador', 'planillero') NOT NULL
 );
 
+hola prueba
 
 -- Usuario Admin:
 CREATE USER IF NOT EXISTS 'admin'@'%' IDENTIFIED BY 'AdminUCU';
