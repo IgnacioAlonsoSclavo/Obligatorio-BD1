@@ -31,7 +31,8 @@ año YEAR,
 semestre INT,
 fecha_inicio DATE,
 fecha_fin DATE,
-estado ENUM ('inscripción' , 'en curso' , 'finalizado')
+estado ENUM ('inscripción' , 'en curso' , 'finalizado'),
+CHECK (fecha_fin >= fecha_inicio)
 );
 
 CREATE TABLE equipo (
@@ -65,21 +66,23 @@ departamento varChar(255) NOT NULL
 );
 
 CREATE TABLE cancha (
-nombre_cancha VARCHAR(255) PRIMARY KEY NOT NULL,
+nombre_cancha VARCHAR(255) NOT NULL,
 id_complejo INT,
 superficie ENUM ('sintético' , 'parquet' ),
 techada BOOLEAN,
+PRIMARY KEY (nombre_cancha, id_complejo),
 FOREIGN KEY (id_complejo) REFERENCES complejo(id_complejo)
 );
 
 CREATE TABLE turno (
 id_turno INT PRIMARY KEY NOT NULL,
 hora_inicio TIME,
-hora_fin TIME
+hora_fin TIME,
+CHECK (hora_fin > hora_inicio)
 );
 
 CREATE TABLE partido (
-id_partido INT PRIMARY KEY NOT NULL,
+id_partido INT NOT NULL,
 id_torneo INT,
 numero_fecha INT,
 id_equipo_local INT,
@@ -89,6 +92,7 @@ id_turno INT,
 nombre_cancha VARCHAR(255),
 id_complejo INT,
 estado ENUM ('programado' , 'jugado' , 'postergado' , 'cancelado' ),
+PRIMARY KEY (id_partido, id_torneo),
 FOREIGN KEY (id_torneo) REFERENCES torneo(id_torneo),
 FOREIGN KEY (id_equipo_local) REFERENCES equipo(id_equipo),
 FOREIGN KEY (id_equipo_visitante) REFERENCES equipo(id_equipo),
@@ -98,9 +102,11 @@ FOREIGN KEY (id_complejo) REFERENCES complejo(id_complejo)
 );
 
 CREATE TABLE planilla_partido (
-id_partido INT PRIMARY KEY NOT NULL,
-ci_jugador INT,
-id_equipo INT,
+id_partido INT NOT NULL,
+ci_jugador INT NOT NULL,
+id_equipo INT NOT NULL,
+PRIMARY KEY (id_partido, ci_jugador),
+FOREIGN KEY (id_partido) REFERENCES partido(id_partido),
 FOREIGN KEY (ci_jugador) REFERENCES jugador(ci),
 FOREIGN KEY (id_equipo) REFERENCES equipo(id_equipo)
 );
@@ -111,6 +117,7 @@ id_partido INT,
 ci_jugador INT,
 minuto INT,
 autogol BOOLEAN,
+CHECK (minuto >= 0),
 FOREIGN KEY (id_partido) REFERENCES partido(id_partido),
 FOREIGN KEY (ci_jugador) REFERENCES jugador(ci)
 );
