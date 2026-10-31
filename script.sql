@@ -5,7 +5,7 @@ USE TorneoInterfacultades;
 CREATE TABLE login (
 correo VARCHAR(255) PRIMARY KEY NOT NULL,
 contraseña VARCHAR(255) NOT NULL,
-rol ENUM('Administrador' , ' Planillero' )
+rol ENUM('admin' , 'planillero' )
 );
 
 CREATE TABLE facultad (

@@ -1,0 +1,1 @@
+from logica_db.conexion import obtener_conexion
