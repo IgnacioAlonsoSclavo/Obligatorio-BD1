@@ -32,7 +32,8 @@ semestre INT,
 fecha_inicio DATE,
 fecha_fin DATE,
 estado ENUM ('inscripción' , 'en curso' , 'finalizado'),
-CHECK (fecha_fin >= fecha_inicio)
+CHECK (fecha_fin >= fecha_inicio),
+CHECK (semestre IN (1, 2))
 );
 
 CREATE TABLE equipo (
@@ -51,11 +52,11 @@ id_equipo INT NOT NULL,
 ci_jugador INT NOT NULL,
 id_torneo INT NOT NULL,
 numero_camiseta INT,
-UNIQUE (ci_jugador, id_torneo),
-PRIMARY KEY (id_equipo, ci_jugador),
+PRIMARY KEY (id_equipo, ci_jugador, id_torneo),
 FOREIGN KEY (id_equipo) REFERENCES equipo(id_equipo),
 FOREIGN KEY (ci_jugador) REFERENCES jugador(ci),
-FOREIGN KEY (id_torneo) REFERENCES torneo(id_torneo)
+FOREIGN KEY (id_torneo) REFERENCES torneo(id_torneo),
+UNIQUE (ci_jugador, id_torneo)
 );
 
 CREATE TABLE complejo (
@@ -87,7 +88,7 @@ id_torneo INT,
 numero_fecha INT,
 id_equipo_local INT,
 id_equipo_visitante INT,
-dia DATETIME,
+dia DATE,
 id_turno INT,
 nombre_cancha VARCHAR(255),
 id_complejo INT,
@@ -98,7 +99,8 @@ FOREIGN KEY (id_equipo_local) REFERENCES equipo(id_equipo),
 FOREIGN KEY (id_equipo_visitante) REFERENCES equipo(id_equipo),
 FOREIGN KEY (id_turno) REFERENCES turno(id_turno),
 FOREIGN KEY (nombre_cancha) REFERENCES cancha(nombre_cancha),
-FOREIGN KEY (id_complejo) REFERENCES complejo(id_complejo)
+FOREIGN KEY (id_complejo) REFERENCES complejo(id_complejo),
+CHECK (numero_fecha >= 1)
 );
 
 CREATE TABLE planilla_partido (
@@ -129,7 +131,8 @@ ci_jugador INT,
 minuto INT,
 color ENUM ('amarilla' , 'roja' ),
 FOREIGN KEY (id_partido) REFERENCES partido(id_partido),
-FOREIGN KEY (ci_jugador) REFERENCES jugador(ci)
+FOREIGN KEY (ci_jugador) REFERENCES jugador(ci),
+CHECK (minuto >= 0)
 );
 
 CREATE TABLE sancion_jugador (
@@ -140,7 +143,9 @@ motivo ENUM ('roja' , 'acumulación de amarillas' , 'disciplinaria' ),
 numero_fecha_inicio INT,
 cantidad_fechas INT,
 FOREIGN KEY (ci_jugador) REFERENCES jugador(ci),
-FOREIGN KEY (id_torneo) REFERENCES torneo(id_torneo)
+FOREIGN KEY (id_torneo) REFERENCES torneo(id_torneo),
+CHECK (numero_fecha_inicio >= 1),
+CHECK (cantidad_fechas >= 1)
 );
 
 
