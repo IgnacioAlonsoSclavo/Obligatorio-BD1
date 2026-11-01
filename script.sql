@@ -3,18 +3,18 @@ USE TorneoInterfacultades;
 
 -- Tabla login:
 CREATE TABLE login (
-correo VARCHAR(255) PRIMARY KEY NOT NULL,
+correo VARCHAR(255) PRIMARY KEY,
 contraseña VARCHAR(255) NOT NULL,
 rol ENUM('admin' , 'planillero' )
 );
 
 CREATE TABLE facultad (
-id_facultad INT PRIMARY KEY NOT NULL,
+id_facultad INT AUTO_INCREMENT PRIMARY KEY,
 nombre VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE jugador (
-ci INT PRIMARY KEY NOT NULL,
+ci INT PRIMARY KEY,
 nombre VARCHAR(255) NOT NULL,
 apellido VARCHAR(255) NOT NULL,
 email VARCHAR(255) NOT NULL UNIQUE,
@@ -25,7 +25,7 @@ FOREIGN KEY (id_facultad) REFERENCES facultad(id_facultad)
 );
 
 CREATE TABLE torneo (
-id_torneo INT PRIMARY KEY NOT NULL,
+id_torneo INT AUTO_INCREMENT PRIMARY KEY,
 nombre VARCHAR(255) NOT NULL,
 año YEAR,
 semestre INT,
@@ -37,7 +37,7 @@ CHECK (semestre IN (1, 2))
 );
 
 CREATE TABLE equipo (
-id_equipo INT PRIMARY KEY NOT NULL,
+id_equipo INT AUTO_INCREMENT PRIMARY KEY,
 nombre VARCHAR(255) NOT NULL,
 id_torneo INT,
 id_facultad INT,
@@ -60,7 +60,7 @@ UNIQUE (ci_jugador, id_torneo)
 );
 
 CREATE TABLE complejo (
-id_complejo INT PRIMARY KEY NOT NULL,
+id_complejo INT AUTO_INCREMENT PRIMARY KEY,
 nombre varChar(255) NOT NULL,
 dirección varChar(255) NOT NULL,
 departamento varChar(255) NOT NULL
@@ -76,14 +76,14 @@ FOREIGN KEY (id_complejo) REFERENCES complejo(id_complejo)
 );
 
 CREATE TABLE turno (
-id_turno INT PRIMARY KEY NOT NULL,
+id_turno INT AUTO_INCREMENT PRIMARY KEY,
 hora_inicio TIME,
 hora_fin TIME,
 CHECK (hora_fin > hora_inicio)
 );
 
 CREATE TABLE partido (
-id_partido INT NOT NULL,
+id_partido INT AUTO_INCREMENT PRIMARY KEY,
 id_torneo INT,
 numero_fecha INT,
 id_equipo_local INT,
@@ -93,13 +93,11 @@ id_turno INT,
 nombre_cancha VARCHAR(255),
 id_complejo INT,
 estado ENUM ('programado' , 'jugado' , 'postergado' , 'cancelado' ),
-PRIMARY KEY (id_partido, id_torneo),
 FOREIGN KEY (id_torneo) REFERENCES torneo(id_torneo),
 FOREIGN KEY (id_equipo_local) REFERENCES equipo(id_equipo),
 FOREIGN KEY (id_equipo_visitante) REFERENCES equipo(id_equipo),
 FOREIGN KEY (id_turno) REFERENCES turno(id_turno),
-FOREIGN KEY (nombre_cancha) REFERENCES cancha(nombre_cancha),
-FOREIGN KEY (id_complejo) REFERENCES complejo(id_complejo),
+FOREIGN KEY (nombre_cancha, id_complejo) REFERENCES cancha(nombre_cancha, id_complejo),
 CHECK (numero_fecha >= 1)
 );
 
@@ -114,7 +112,7 @@ FOREIGN KEY (id_equipo) REFERENCES equipo(id_equipo)
 );
 
 CREATE TABLE gol (
-id_gol INT PRIMARY KEY NOT NULL,
+id_gol INT AUTO_INCREMENT PRIMARY KEY,
 id_partido INT,
 ci_jugador INT,
 minuto INT,
@@ -125,7 +123,7 @@ FOREIGN KEY (ci_jugador) REFERENCES jugador(ci)
 );
 
 CREATE TABLE tarjeta (
-id_tarjeta INT PRIMARY KEY NOT NULL,
+id_tarjeta INT AUTO_INCREMENT PRIMARY KEY,
 id_partido INT,
 ci_jugador INT,
 minuto INT,
@@ -136,7 +134,7 @@ CHECK (minuto >= 0)
 );
 
 CREATE TABLE sancion_jugador (
-id_sancion INT PRIMARY KEY NOT NULL,
+id_sancion INT AUTO_INCREMENT PRIMARY KEY,
 ci_jugador INT,
 id_torneo INT,
 motivo ENUM ('roja' , 'acumulación de amarillas' , 'disciplinaria' ),
