@@ -76,7 +76,7 @@ def crear_vistas():
 def tabla_posiciones(id_torneo):
     conexion = obtener_conexion()
     try:
-        cursor = conexion.cursor()
+        cursor = conexion.cursor(dictionary=True)
         cursor.execute("""
                        SELECT r.id_equipo,
                               r.partidos_jugados,
@@ -100,7 +100,7 @@ def tabla_posiciones(id_torneo):
 def goleadores():
     conexion = obtener_conexion()
     try:
-        cursor = conexion.cursor()
+        cursor = conexion.cursor(dictionary=True)
         cursor.execute("""
                        SELECT j.ci, j.nombre, COUNT(ci_jugador) AS cantidad_goles
                        FROM gol g JOIN jugador j ON g.ci_jugador = j.ci
@@ -119,7 +119,7 @@ def goleadores():
 def promedios_goles(id_torneo):
     conexion = obtener_conexion()
     try:
-        cursor = conexion.cursor()
+        cursor = conexion.cursor(dictionary=True)
 
         # Promedio por fecha
         cursor.execute("""
@@ -143,7 +143,7 @@ def promedios_goles(id_torneo):
                                FROM partido
                                WHERE estado = 'jugado' AND id_torneo = %s) AS promedio_en_la_edicion
                        """, (id_torneo, id_torneo))
-        promedio_edicion = cursor.fetchone()[0]
+        cursor.fetchone()["promedio_en_la_edicion"]
 
         cursor.close()
         return por_fecha, promedio_edicion
@@ -161,19 +161,23 @@ if __name__ == "__main__":
     print(f"--- Tabla de posiciones (torneo {ID_TORNEO}) ---")
     print("Equipo | PJ | GF | GC | DG | G | E | P | Pts")
     posiciones = tabla_posiciones(ID_TORNEO)
-    for fila in sorted(posiciones, key=lambda f: f[8], reverse=True):  # ordena por puntos
-        print(" | ".join(str(dato) for dato in fila))
+    for f in sorted(posiciones, key=lambda f: f["puntos"], reverse=True):
+        print(f"{f['id_equipo']} | {f['partidos_jugados']} | {f['goles_a_favor']} | "
+              f"{f['goles_en_contra']} | {f['diferencia_de_goles']} | {f['ganados']} | "
+              f"{f['empatados']} | {f['perdidos']} | {f['puntos']}")
     if not posiciones:
         print("(sin partidos jugados en este torneo)")
 
     # Goleadores
     print("\n--- Top 10 goleadores ---")
-    for ci, nombre, goles in goleadores():
-        print(f"{nombre} ({ci}): {goles} goles")
+    for g in goleadores():
+        print(f"{g['nombre']} ({g['ci']}): {g['cantidad_goles']} goles")
 
     # Promedios de goles
     por_fecha, promedio_edicion = promedios_goles(ID_TORNEO)
     print(f"\n--- Promedio de goles por fecha (torneo {ID_TORNEO}) ---")
-    for numero_fecha, goles, promedio in por_fecha:
-        print(f"Fecha {numero_fecha}: {goles} goles, promedio {promedio}")
+    for f in por_fecha:
+        print(f"Fecha {f['numero_fecha']}: {f['cantidad_goles']} goles, "
+              f"promedio {f['promedio_por_fecha']}")
     print("Promedio de la edición:", promedio_edicion)
+
