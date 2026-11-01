@@ -150,6 +150,40 @@ def promedios_goles(id_torneo):
     finally:
         conexion.close()
 
+def canchas_mas_usadas():
+    conexion = obtener_conexion()
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT c.nombre_cancha, COUNT(*) AS cantidad_de_usos_cancha
+            FROM cancha c JOIN partido p ON c.nombre_cancha = p.nombre_cancha
+            WHERE p.estado = 'jugado'
+            GROUP BY c.nombre_cancha
+            ORDER BY cantidad_de_usos_cancha DESC
+        """)
+        resultado = cursor.fetchall()
+        cursor.close()
+        return resultado
+    finally:
+        conexion.close()
+
+
+def turnos_mas_usados():
+    conexion = obtener_conexion()
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT t.hora_inicio, t.hora_fin, COUNT(*) AS cantidad_de_usos_hora
+            FROM turno t JOIN partido p ON t.id_turno = p.id_turno
+            WHERE p.estado = 'jugado'
+            GROUP BY t.hora_inicio, t.hora_fin
+            ORDER BY cantidad_de_usos_hora DESC
+        """)
+        resultado = cursor.fetchall()
+        cursor.close()
+        return resultado
+    finally:
+        conexion.close()
 
 if __name__ == "__main__":
     ID_TORNEO = 1  # Se debe crear un torneo antes
@@ -181,3 +215,12 @@ if __name__ == "__main__":
               f"promedio {f['promedio_por_fecha']}")
     print("Promedio de la edición:", promedio_edicion)
 
+    # Canchas más utilizadas
+    print("\n--- Canchas más utilizadas ---")
+    for c in canchas_mas_usadas():
+        print(f"{c['nombre_cancha']}: {c['cantidad_de_usos_cancha']} usos")
+
+    # Turnos más utilizados
+    print("\n--- Turnos más utilizados ---")
+    for t in turnos_mas_usados():
+        print(f"{t['hora_inicio']} a {t['hora_fin']}: {t['cantidad_de_usos_hora']} usos")
