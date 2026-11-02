@@ -147,17 +147,70 @@ CHECK (cantidad_fechas >= 1)
 );
 
 
--- Usuario Admin:
+CREATE OR REPLACE VIEW goles_por_partido AS
+SELECT p.id_partido,
+       p.id_equipo_local,
+       p.id_equipo_visitante,
+       SUM(IF((ejt.id_equipo = p.id_equipo_local AND NOT g.autogol) OR (ejt.id_equipo = p.id_equipo_visitante AND g.autogol), 1, 0)) AS goles_local,
+       SUM(IF((ejt.id_equipo = p.id_equipo_visitante AND NOT g.autogol) OR (ejt.id_equipo = p.id_equipo_local AND g.autogol), 1, 0)) AS goles_visitante
+FROM partido p
+LEFT JOIN gol g ON g.id_partido = p.id_partido
+LEFT JOIN equipo_jugador_torneo ejt ON ejt.ci_jugador = g.ci_jugador AND ejt.id_equipo IN (p.id_equipo_local, p.id_equipo_visitante)
+WHERE p.estado = 'jugado'
+GROUP BY p.id_partido, p.id_equipo_local, p.id_equipo_visitante;
+
+CREATE OR REPLACE VIEW resultados_equipo AS
+SELECT id_equipo,
+       SUM(ganado) AS ganados,
+       SUM(empatado) AS empatados,
+       SUM(perdido) AS perdidos,
+       SUM(IF(ganado, 3, IF(empatado, 1, 0))) AS puntos,
+       SUM(ganado + empatado + perdido) AS partidos_jugados
+FROM (
+    SELECT id_equipo_local AS id_equipo,
+           IF(goles_local > goles_visitante, 1, 0) AS ganado,
+           IF(goles_local = goles_visitante, 1, 0) AS empatado,
+           IF(goles_local < goles_visitante, 1, 0) AS perdido
+    FROM goles_por_partido
+    UNION ALL
+    SELECT id_equipo_visitante AS id_equipo,
+           IF(goles_visitante > goles_local, 1, 0) AS ganado,
+           IF(goles_visitante = goles_local, 1, 0) AS empatado,
+           IF(goles_visitante < goles_local, 1, 0) AS perdido
+    FROM goles_por_partido
+) x
+GROUP BY id_equipo;
+
+CREATE OR REPLACE VIEW goles_equipo AS
+SELECT id_equipo,
+       SUM(goles_a_favor) AS goles_a_favor,
+       SUM(goles_en_contra) AS goles_en_contra,
+       SUM(goles_a_favor - goles_en_contra) AS diferencia_de_goles
+FROM (
+    SELECT id_equipo_local AS id_equipo,
+           SUM(goles_local) AS goles_a_favor,
+           SUM(goles_visitante) AS goles_en_contra
+    FROM goles_por_partido
+    GROUP BY id_equipo
+    UNION ALL
+    SELECT id_equipo_visitante AS id_equipo,
+           SUM(goles_visitante) AS goles_a_favor,
+           SUM(goles_local) AS goles_en_contra
+    FROM goles_por_partido
+    GROUP BY id_equipo
+) x
+GROUP BY id_equipo;
+
+
+
 CREATE USER IF NOT EXISTS 'admin'@'%' IDENTIFIED BY 'AdminUCU';
 GRANT ALL PRIVILEGES ON TorneoInterfacultades.* TO 'admin'@'%';
 
--- Usuario Planillero:
+
 CREATE USER IF NOT EXISTS 'planillero'@'%' IDENTIFIED BY 'PlanilleroPass2026!';
 
--- Permiso para autenticarse consultando la tabla de login
 GRANT SELECT ON TorneoInterfacultades.login TO 'planillero'@'%';
 
--- Solo lectura de las tablas maestras y de consulta
 GRANT SELECT ON TorneoInterfacultades.torneo TO 'planillero'@'%';
 GRANT SELECT ON TorneoInterfacultades.facultad TO 'planillero'@'%';
 GRANT SELECT ON TorneoInterfacultades.equipo TO 'planillero'@'%';
@@ -167,8 +220,10 @@ GRANT SELECT ON TorneoInterfacultades.cancha TO 'planillero'@'%';
 GRANT SELECT ON TorneoInterfacultades.complejo TO 'planillero'@'%';
 GRANT SELECT ON TorneoInterfacultades.turno TO 'planillero'@'%';
 GRANT SELECT ON TorneoInterfacultades.sancion_jugador TO 'planillero'@'%';
+GRANT SELECT ON TorneoInterfacultades.goles_por_partido TO 'planillero'@'%';
+GRANT SELECT ON TorneoInterfacultades.resultados_equipo TO 'planillero'@'%';
+GRANT SELECT ON TorneoInterfacultades.goles_equipo TO 'planillero'@'%';
 
--- Permisos de carga y edición en planillas, goles, tarjetas y resultado de partido
 GRANT SELECT, UPDATE ON TorneoInterfacultades.partido TO 'planillero'@'%';
 GRANT SELECT, INSERT, UPDATE ON TorneoInterfacultades.planilla_partido TO 'planillero'@'%';
 GRANT SELECT, INSERT, UPDATE ON TorneoInterfacultades.gol TO 'planillero'@'%';

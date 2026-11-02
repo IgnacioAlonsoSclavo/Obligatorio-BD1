@@ -55,82 +55,6 @@ def obtener_porcentaje_estados_partidos(id_torneo):
         cursor.close()
         conexion.close()
 
-
-if __name__ == "__main__":
-    resultado = obtener_porcentaje_estados_partidos(1)
-    print("Resultado:", resultado)
-
-
-def crear_vistas():
-    conexion = obtener_conexion()
-    try:
-        cursor = conexion.cursor()
-
-        cursor.execute("""
-                       CREATE
-                       OR REPLACE VIEW goles_por_partido AS
-                       SELECT p.id_partido,
-                              p.id_equipo_local,
-                              p.id_equipo_visitante,
-                              SUM(IF((ejt.id_equipo = p.id_equipo_local AND NOT g.autogol) OR (ejt.id_equipo = p.id_equipo_visitante AND g.autogol), 1,0)) AS goles_local,
-                              SUM(IF((ejt.id_equipo = p.id_equipo_visitante AND NOT g.autogol) OR (ejt.id_equipo = p.id_equipo_local AND g.autogol), 1, 0)) AS goles_visitante
-                       FROM partido p LEFT JOIN gol g ON g.id_partido = p.id_partido LEFT JOIN equipo_jugador_torneo ejt ON ejt.ci_jugador = g.ci_jugador AND ejt.id_equipo IN (p.id_equipo_local, p.id_equipo_visitante)
-                       WHERE p.estado = 'jugado'
-                       GROUP BY p.id_partido, p.id_equipo_local, p.id_equipo_visitante
-                       """)
-
-        cursor.execute("""
-                       CREATE
-                       OR REPLACE VIEW resultados_equipo AS
-                       SELECT id_equipo,
-                              SUM(ganado) AS ganados,
-                              SUM(empatado) AS empatados,
-                              SUM(perdido) AS perdidos,
-                              SUM(IF(ganado, 3, IF(empatado, 1, 0))) AS puntos,
-                              SUM(ganado + empatado + perdido) AS partidos_jugados
-                       FROM (SELECT id_equipo_local AS id_equipo,
-                                    IF(goles_local > goles_visitante, 1, 0) AS ganado,
-                                    IF(goles_local = goles_visitante, 1, 0) AS empatado,
-                                    IF(goles_local < goles_visitante, 1, 0) AS perdido
-                             FROM goles_por_partido
-
-                             UNION ALL
-
-                             SELECT id_equipo_visitante AS id_equipo,
-                                    IF(goles_visitante > goles_local, 1, 0) AS ganado,
-                                    IF(goles_visitante = goles_local, 1, 0) AS empatado,
-                                    IF(goles_visitante < goles_local, 1, 0) AS perdido
-                             FROM goles_por_partido) x
-                       GROUP BY id_equipo
-                       """)
-
-        cursor.execute("""
-                       CREATE
-                       OR REPLACE VIEW goles_equipo AS
-                       SELECT id_equipo,
-                              SUM(goles_a_favor) AS goles_a_favor,
-                              SUM(goles_en_contra) AS goles_en_contra,
-                              SUM(goles_a_favor - goles_en_contra) AS diferencia_de_goles
-                       FROM (SELECT id_equipo_local AS id_equipo,
-                                    SUM(goles_local) AS goles_a_favor,
-                                    SUM(goles_visitante) AS goles_en_contra
-                             FROM goles_por_partido
-                             GROUP BY id_equipo
-
-                             UNION ALL
-
-                             SELECT id_equipo_visitante AS id_equipo,
-                                    SUM(goles_visitante) AS goles_a_favor,
-                                    SUM(goles_local) AS goles_en_contra
-                             FROM goles_por_partido
-                             GROUP BY id_equipo) x
-                       GROUP BY id_equipo
-                       """)
-
-        cursor.close()
-    finally:
-        conexion.close()
-
 # Consultas
 
 def tabla_posiciones(id_torneo):
@@ -203,7 +127,8 @@ def promedios_goles(id_torneo):
                                FROM partido
                                WHERE estado = 'jugado' AND id_torneo = %s) AS promedio_en_la_edicion
                        """, (id_torneo, id_torneo))
-        cursor.fetchone()["promedio_en_la_edicion"]
+        fila = cursor.fetchone()
+        promedio_edicion = fila["promedio_en_la_edicion"] if fila and fila["promedio_en_la_edicion"] is not None else 0.0
 
         cursor.close()
         return por_fecha, promedio_edicion
@@ -216,9 +141,9 @@ def canchas_mas_usadas():
         cursor = conexion.cursor(dictionary=True)
         cursor.execute("""
             SELECT c.nombre_cancha, COUNT(*) AS cantidad_de_usos_cancha
-            FROM cancha c JOIN partido p ON c.nombre_cancha = p.nombre_cancha
+            FROM cancha c JOIN partido p ON c.nombre_cancha = p.nombre_cancha AND c.id_complejo = p.id_complejo
             WHERE p.estado = 'jugado'
-            GROUP BY c.nombre_cancha
+            GROUP BY c.nombre_cancha, c.id_complejo
             ORDER BY cantidad_de_usos_cancha DESC
         """)
         resultado = cursor.fetchall()
@@ -253,9 +178,6 @@ def turnos_mas_usados():
 if __name__ == "__main__":
     ID_TORNEO = 1  # Se debe crear un torneo antes
 
-    crear_vistas()
-    print("Vistas creadas.\n")
-
     # Tabla de posiciones
     print(f"--- Tabla de posiciones (torneo {ID_TORNEO}) ---")
     print("Equipo | PJ | GF | GC | DG | G | E | P | Pts")
@@ -289,5 +211,13 @@ if __name__ == "__main__":
     print("\n--- Turnos más utilizados ---")
     for t in turnos_mas_usados():
         print(f"{t['hora_inicio']} a {t['hora_fin']}: {t['cantidad_de_usos_hora']} usos")
+
+    # Porcentaje de estados
+    print("\n--- Porcentaje de estados de partidos ---")
+    print(obtener_porcentaje_estados_partidos(ID_TORNEO))
+
+    # Jugadores sin minutos
+    print("\n--- Jugadores sin minutos ---")
+    print(obtener_jugadores_sin_minutos(ID_TORNEO))
 
 
