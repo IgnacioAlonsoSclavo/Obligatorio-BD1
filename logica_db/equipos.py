@@ -22,17 +22,18 @@ def crear_equipo(nombre, id_torneo, id_facultad, ci_capitan):
         cursor.close()
         conexion.close()
 
-# modificar_equipo(id_equipo, nombre, ci_capitan) -> bool (True si se modifico, False si fallo)
-def modificar_equipo(id_equipo,nombre, ci_capitan):
+# modificar_equipo(id_equipo, nombre=None, ci_capitan=None) -> bool (True si se modifico, False si fallo)
+def modificar_equipo(id_equipo, nombre=None, ci_capitan=None):
     conexion = obtener_conexion()
     cursor = conexion.cursor(dictionary=True)
     try:
         query = """
             UPDATE equipo
-            SET nombre = %s, ci_capitan = %s
+            SET nombre = COALESCE(%s, nombre),
+                ci_capitan = COALESCE(%s, ci_capitan)
             WHERE id_equipo = %s
         """
-        cursor.execute(query,(nombre, ci_capitan,id_equipo))
+        cursor.execute(query, (nombre, ci_capitan, id_equipo))
         conexion.commit()
         if cursor.rowcount > 0:
             print("Se actualizo el equipo correctamente.")
