@@ -187,6 +187,31 @@ def sanciones_por_equipo_y_motivo():
     finally:
         conexion.close()
 
+
+def tabla_fair_play(id_torneo):
+    conexion = obtener_conexion()
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT e.id_equipo, e.nombre,
+                   SUM(IF(p.id_torneo = ejt.id_torneo,
+                          IF(t.color = 'amarilla', 1, IF(t.color = 'roja', 3, 0)),
+                          0)) AS puntos_fair_play
+            FROM equipo_jugador_torneo ejt
+            JOIN equipo e ON e.id_equipo = ejt.id_equipo
+            LEFT JOIN tarjeta t ON t.ci_jugador = ejt.ci_jugador
+            LEFT JOIN partido p ON p.id_partido = t.id_partido
+            WHERE ejt.id_torneo = %s
+            GROUP BY e.id_equipo, e.nombre
+            ORDER BY puntos_fair_play ASC
+        """, (id_torneo,))
+        resultado = cursor.fetchall()
+        cursor.close()
+        return resultado
+    finally:
+        conexion.close()
+
+
 if __name__ == "__main__":
     ID_TORNEO = 1  # Se debe crear un torneo antes
 
@@ -237,4 +262,7 @@ if __name__ == "__main__":
     for s in sanciones_por_equipo_y_motivo():
         print(f"{s['nombre']} ({s['id_equipo']}) - {s['motivo']}: {s['cantidad']}")
 
-
+    # Fair Play por equipo
+    print(f"\n--- Fair play (torneo {ID_TORNEO}) ---")
+    for f in tabla_fair_play(ID_TORNEO):
+        print(f"{f['nombre']} ({f['id_equipo']}): {f['puntos_fair_play']} puntos")
