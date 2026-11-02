@@ -170,10 +170,22 @@ def turnos_mas_usados():
     finally:
         conexion.close()
 
-# 8. Cantidad de sanciones por equipo y por motivo
-#    Agrupa sanciones recibidas por cada equipo distinguiendo el motivo (roja, acumulación de amarillas, disciplinaria).
-# def obtener_sanciones_por_equipo_y_motivo(id_torneo):
-#     pass
+def sanciones_por_equipo_y_motivo():
+    conexion = obtener_conexion()
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT ejt.id_equipo, e.nombre, sj.motivo, COUNT(sj.motivo) AS cantidad
+            FROM sancion_jugador sj JOIN equipo_jugador_torneo ejt ON sj.ci_jugador = ejt.ci_jugador AND sj.id_torneo = ejt.id_torneo
+            JOIN equipo e ON ejt.id_equipo = e.id_equipo
+            GROUP BY ejt.id_equipo, e.nombre, sj.motivo
+            ORDER BY e.nombre, sj.motivo
+        """)
+        resultado = cursor.fetchall()
+        cursor.close()
+        return resultado
+    finally:
+        conexion.close()
 
 if __name__ == "__main__":
     ID_TORNEO = 1  # Se debe crear un torneo antes
@@ -219,5 +231,10 @@ if __name__ == "__main__":
     # Jugadores sin minutos
     print("\n--- Jugadores sin minutos ---")
     print(obtener_jugadores_sin_minutos(ID_TORNEO))
+
+    # Sanciones por equipo y motivos
+    print("\n--- Sanciones por equipo y motivo ---")
+    for s in sanciones_por_equipo_y_motivo():
+        print(f"{s['nombre']} ({s['id_equipo']}) - {s['motivo']}: {s['cantidad']}")
 
 
