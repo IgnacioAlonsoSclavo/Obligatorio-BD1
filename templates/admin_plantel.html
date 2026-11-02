@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <a href="{{ url_for('admin_equipos') }}" class="btn btn-outline-secondary btn-sm">&larr; Volver a Equipos</a>
+    <span class="badge bg-info text-dark">Plantel Oficial</span>
+</div>
+
+<div class="box">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h3 class="fw-bold mb-0">{{ equipo.nombre }}</h3>
+        {% if equipo.ci_capitan %}
+            <span class="badge bg-warning text-dark fs-6">⭐ Capitán: CI {{ equipo.ci_capitan }}</span>
+        {% else %}
+            <span class="badge bg-light text-dark border">Sin Capitán Asignado</span>
+        {% endif %}
+    </div>
+    <p class="text-muted small mb-3">Equipo ID #{{ equipo.id_equipo }} | Facultad {{ equipo.id_facultad }} | Torneo #{{ equipo.id_torneo }}</p>
+
+    <table class="table table-bordered table-hover align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 70px;" class="text-center">Dorsal</th>
+                <th>Cédula</th>
+                <th>Nombre Completo</th>
+                <th>Condición</th>
+                <th>Rol</th>
+                <th class="text-center" style="width: 200px;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if plantel %}
+                {% for j in plantel %}
+                <tr class="{{ 'table-warning' if equipo.ci_capitan == j.ci else '' }}">
+                    <td class="text-center fw-bold">#{{ j.numero_camiseta }}</td>
+                    <td>{{ j.ci }}</td>
+                    <td>{{ j.apellido }}, {{ j.nombre }}</td>
+                    <td><span class="badge bg-secondary">{{ j.tipo|capitalize }}</span></td>
+                    <td>
+                        {% if equipo.ci_capitan == j.ci %}
+                            <span class="badge bg-warning text-dark fw-bold">⭐ Capitán</span>
+                        {% else %}
+                            <span class="text-muted small">Jugador</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if equipo.ci_capitan != j.ci %}
+                        <form method="POST" action="{{ url_for('admin_designar_capitan', id_equipo=equipo.id_equipo, ci=j.ci) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-outline-warning text-dark" title="Nombrar capitán del equipo">⭐ Asignar Capitán</button>
+                        </form>
+                        {% endif %}
+                        <form method="POST" action="{{ url_for('admin_quitar_jugador', id_equipo=equipo.id_equipo, ci=j.ci, id_torneo=equipo.id_torneo) }}" style="display:inline;" onsubmit="return confirm('¿Desvincular del plantel?');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Quitar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="6" class="text-center text-muted py-3">No hay jugadores registrados en este plantel.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<div class="box">
+    <h4 class="fw-bold mb-1">Inscribir Jugador al Plantel</h4>
+    <p class="text-muted small mb-3">Verifica automáticamente las 5 reglas de la UCU (misma facultad, cupo máx. 10, máx. 2 docentes/funcionarios y torneo en período de inscripción).</p>
+
+    <form method="POST" action="{{ url_for('admin_agregar_jugador', id_equipo=equipo.id_equipo) }}" class="row g-3">
+        <input type="hidden" name="id_torneo" value="{{ equipo.id_torneo }}">
+        <div class="col-md-5">
+            <label class="form-label fw-semibold">Cédula del Jugador (CI)</label>
+            <input type="number" name="ci_jugador" class="form-control" placeholder="Ej: 51234567" required>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label fw-semibold">Número de Camiseta (Dorsal)</label>
+            <input type="number" name="numero_camiseta" class="form-control" placeholder="10" required>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button type="submit" class="btn btn-success w-100">Agregar al Plantel</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

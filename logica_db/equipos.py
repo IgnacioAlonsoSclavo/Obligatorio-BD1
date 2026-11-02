@@ -2,8 +2,8 @@ from mysql.connector import Error
 
 from logica_db.conexion import obtener_conexion
 
-# crear_equipo(nombre, id_torneo, id_facultad, ci_capitan) -> bool (True si se creo, False si fallo)
-def crear_equipo(nombre, id_torneo, id_facultad, ci_capitan):
+# crear_equipo(nombre, id_torneo, id_facultad, ci_capitan=None) -> bool (True si se creo, False si fallo)
+def crear_equipo(nombre, id_torneo, id_facultad, ci_capitan=None):
     conexion = obtener_conexion()
     cursor = conexion.cursor(dictionary=True)
     try:
@@ -92,20 +92,27 @@ def obtener_equipo(id_equipo):
         conexion.close()
 
 # listar_equipos_por_torneo(id_torneo) -> list de dicts con los equipos inscriptos
-def listar_equipos(id_torneo):
+def listar_equipos(id_torneo=None):
     conexion = obtener_conexion()
     cursor = conexion.cursor(dictionary=True)
     try:
-        query = """
-                SELECT * FROM equipo
-                WHERE id_torneo = %s
-                ORDER BY nombre
-                """
-        cursor.execute(query,(id_torneo,))
+        if id_torneo is not None:
+            query = """
+                    SELECT * FROM equipo
+                    WHERE id_torneo = %s
+                    ORDER BY nombre
+                    """
+            cursor.execute(query, (id_torneo,))
+        else:
+            query = """
+                    SELECT * FROM equipo
+                    ORDER BY id_torneo, nombre
+                    """
+            cursor.execute(query)
         return cursor.fetchall()
     except Error as e:
         print(f"Error al listar equipos: {e}")
-        return False
+        return []
     finally:
         cursor.close()
         conexion.close()

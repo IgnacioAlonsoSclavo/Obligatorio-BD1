@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    {% if session.get('usuario') %}
+        <a href="{{ url_for('admin_panel' if session['usuario']['rol'] == 'admin' else 'planillero_panel') }}" class="btn btn-outline-secondary btn-sm">&larr; Volver al Panel</a>
+    {% else %}
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">&larr; Volver al Menú Principal</a>
+    {% endif %}
+
+    <form method="GET" action="{{ url_for('consultas_publicas') }}" class="d-flex align-items-center gap-2">
+        <label class="small text-muted">ID Torneo:</label>
+        <input type="number" name="id_torneo" value="{{ id_torneo }}" class="form-control form-control-sm" style="width: 70px;">
+        <button type="submit" class="btn btn-sm btn-primary">Ver</button>
+    </form>
+</div>
+
+<div class="box">
+    <h3 class="fw-bold mb-1">Consultas Públicas y Estadísticas</h3>
+    <p class="text-muted small mb-0">Resultados analíticos calculados directamente desde la base de datos (Torneo #{{ id_torneo }}).</p>
+</div>
+
+<!-- 1. Tabla de Posiciones -->
+<div class="box">
+    <h5 class="fw-bold mb-3">1. Tabla de Posiciones</h5>
+    <table class="table table-bordered table-striped text-center align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>#</th>
+                <th>Equipo</th>
+                <th>PJ</th>
+                <th>G</th>
+                <th>E</th>
+                <th>P</th>
+                <th>GF</th>
+                <th>GC</th>
+                <th>DG</th>
+                <th>Puntos</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if posiciones %}
+                {% for p in posiciones %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td class="fw-bold">Equipo #{{ p.id_equipo }}</td>
+                    <td>{{ p.partidos_jugados }}</td>
+                    <td>{{ p.ganados }}</td>
+                    <td>{{ p.empatados }}</td>
+                    <td>{{ p.perdidos }}</td>
+                    <td>{{ p.goles_a_favor }}</td>
+                    <td>{{ p.goles_en_contra }}</td>
+                    <td>{{ p.diferencia_de_goles }}</td>
+                    <td class="fw-bold text-primary">{{ p.puntos }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="10" class="text-muted py-3">No hay partidos jugados en este torneo.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 2. Goleadores -->
+<div class="box">
+    <h5 class="fw-bold mb-3">2. Top 10 Goleadores</h5>
+    <table class="table table-bordered table-sm align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 50px;">#</th>
+                <th>Jugador</th>
+                <th>Cédula</th>
+                <th class="text-end" style="width: 120px;">Goles</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if goleadores %}
+                {% for g in goleadores %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ g.nombre }}</td>
+                    <td>{{ g.ci }}</td>
+                    <td class="text-end fw-bold text-danger">{{ g.cantidad_goles }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="4" class="text-muted text-center py-2">No hay goles registrados.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 3. Promedio de Goles -->
+<div class="box">
+    <h5 class="fw-bold mb-2">3. Promedio de Goles</h5>
+    <p class="text-muted small">Promedio general de la edición: <strong>{{ promedio_edicion }}</strong> goles por partido.</p>
+    <table class="table table-bordered table-sm align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Fecha</th>
+                <th>Goles</th>
+                <th>Promedio por Partido</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if por_fecha %}
+                {% for f in por_fecha %}
+                <tr>
+                    <td>Fecha {{ f.numero_fecha }}</td>
+                    <td>{{ f.cantidad_goles }}</td>
+                    <td class="fw-bold">{{ f.promedio_por_fecha }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="3" class="text-muted py-2">Sin partidos jugados.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 4. Canchas y Turnos -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="box">
+            <h5 class="fw-bold mb-2">4. Canchas Más Utilizadas</h5>
+            <table class="table table-bordered table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr><th>Cancha</th><th class="text-end">Usos</th></tr>
+                </thead>
+                <tbody>
+                    {% for c in canchas %}
+                    <tr><td>{{ c.nombre_cancha }}</td><td class="text-end fw-bold">{{ c.cantidad_de_usos_cancha }}</td></tr>
+                    {% else %}
+                    <tr><td colspan="2" class="text-muted text-center py-2">Sin registros.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="box">
+            <h5 class="fw-bold mb-2">5. Horarios / Turnos Más Usados</h5>
+            <table class="table table-bordered table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr><th>Horario</th><th class="text-end">Usos</th></tr>
+                </thead>
+                <tbody>
+                    {% for t in turnos %}
+                    <tr><td>{{ t.hora_inicio }} a {{ t.hora_fin }}</td><td class="text-end fw-bold">{{ t.cantidad_de_usos_hora }}</td></tr>
+                    {% else %}
+                    <tr><td colspan="2" class="text-muted text-center py-2">Sin registros.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 6. Estados de Partidos -->
+<div class="box">
+    <h5 class="fw-bold mb-2">6. Porcentaje de Estados de Partidos</h5>
+    <table class="table table-bordered table-sm text-center mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Total Partidos</th>
+                <th>% Jugados</th>
+                <th>% Postergados / Cancelados</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>{{ estados.get('total_partidos', 0) }}</td>
+                <td class="text-success fw-bold">{{ estados.get('porcentaje_jugados', 0.0) }}%</td>
+                <td class="text-warning fw-bold">{{ estados.get('porcentaje_postergados_cancelados', 0.0) }}%</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- 7. Sanciones por Equipo -->
+<div class="box">
+    <h5 class="fw-bold mb-2">7. Sanciones por Equipo y Motivo</h5>
+    <table class="table table-bordered table-sm align-middle mb-0">
+        <thead class="table-light">
+            <tr><th>Equipo</th><th>Motivo</th><th class="text-end">Cantidad</th></tr>
+        </thead>
+        <tbody>
+            {% for s in sanciones_equipo %}
+            <tr><td>{{ s.nombre }} (#{{ s.id_equipo }})</td><td>{{ s.motivo }}</td><td class="text-end fw-bold">{{ s.cantidad }}</td></tr>
+            {% else %}
+            <tr><td colspan="3" class="text-muted text-center py-2">Sin sanciones registradas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 8. Sin Minutos -->
+<div class="box">
+    <h5 class="fw-bold mb-2">8. Jugadores en Plantel sin Minutos</h5>
+    <table class="table table-bordered table-sm align-middle mb-0">
+        <thead class="table-light">
+            <tr><th>#</th><th>Jugador</th><th>Cédula</th><th>Equipo</th></tr>
+        </thead>
+        <tbody>
+            {% for j in sin_minutos %}
+            <tr><td>#{{ j.numero_camiseta }}</td><td>{{ j.apellido }}, {{ j.nombre }}</td><td>{{ j.ci }}</td><td>{{ j.nombre_equipo }}</td></tr>
+            {% else %}
+            <tr><td colspan="4" class="text-muted text-center py-2">Todos los jugadores inscritos han participado de partidos.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-secondary btn-sm">&larr; Volver al Panel de Administrador</a>
+    <span class="badge bg-primary">Módulo Equipos</span>
+</div>
+
+<div class="box">
+    <h3 class="fw-bold mb-1">Equipos Registrados</h3>
+    <p class="text-muted small mb-3">Lista de todos los equipos del torneo.</p>
+
+    <table class="table table-bordered table-striped table-hover align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 70px;">ID</th>
+                <th>Nombre</th>
+                <th>Facultad</th>
+                <th>Torneo</th>
+                <th>Capitán</th>
+                <th class="text-center" style="width: 220px;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if equipos %}
+                {% for e in equipos %}
+                <tr>
+                    <td>#{{ e.id_equipo }}</td>
+                    <td class="fw-bold">{{ e.nombre }}</td>
+                    <td>Facultad {{ e.id_facultad }}</td>
+                    <td>Torneo {{ e.id_torneo }}</td>
+                    <td>
+                        {% if e.ci_capitan %}
+                            <span class="badge bg-dark">CI {{ e.ci_capitan }}</span>
+                        {% else %}
+                            <span class="text-muted small">Sin asignar</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <a href="{{ url_for('admin_plantel', id_equipo=e.id_equipo) }}" class="btn btn-sm btn-info text-white">Ver Plantel</a>
+                        <form method="POST" action="{{ url_for('admin_eliminar_equipo', id_equipo=e.id_equipo) }}" style="display:inline;" onsubmit="return confirm('¿Seguro que desea eliminar el equipo?');">
+                            <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="6" class="text-center text-muted py-3">No hay equipos registrados.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<div class="box">
+    <h4 class="fw-bold mb-2">Crear Nuevo Equipo</h4>
+    <p class="text-muted small mb-3">El capitán es opcional al momento de crearlo (puede asignarse luego desde el plantel).</p>
+
+    <form method="POST" action="{{ url_for('admin_crear_equipo') }}" class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label fw-semibold">Nombre del Equipo</label>
+            <input type="text" name="nombre" class="form-control" placeholder="Ej: Los Halcones" required>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label fw-semibold">ID Torneo</label>
+            <input type="number" name="id_torneo" class="form-control" value="1" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold">Facultad</label>
+            <select name="id_facultad" class="form-select" required>
+                <option value="1">1 - Ingeniería y Tecnologías</option>
+                <option value="2">2 - Ciencias Empresariales</option>
+                <option value="3">3 - Ciencias de la Salud</option>
+                <option value="4">4 - Derecho y Humanidades</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold">CI Capitán (Opcional)</label>
+            <input type="number" name="ci_capitan" class="form-control" placeholder="Dejar vacío si aún no hay">
+        </div>
+        <div class="col-12 mt-3">
+            <button type="submit" class="btn btn-primary px-4">Crear Equipo</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

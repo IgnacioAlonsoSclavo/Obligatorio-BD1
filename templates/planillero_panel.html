@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="box text-center py-4 mb-4">
+    <h2 class="fw-bold mb-1">Panel de Planillero</h2>
+    <p class="text-muted small mb-0">Sesión iniciada como: <strong>{{ session['usuario']['correo'] }}</strong></p>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="box h-100 p-4 border bg-light">
+            <h5 class="fw-bold mb-2">⚽ Carga de Actas de Partidos</h5>
+            <p class="text-muted small mb-3">Registrar jugadores en planilla, registrar goles, tarjetas rojas/amarillas y cerrar actas.</p>
+            <span class="badge bg-warning text-dark">Pendiente completar logica_db/partidos.py</span>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <a href="{{ url_for('consultas_publicas') }}" class="btn btn-outline-secondary btn-lg w-100 h-100 py-4 text-start bg-white shadow-sm d-flex flex-column justify-content-center">
+            <span class="fs-5 fw-bold d-block">📊 Consultas y Reportes Estadísticos</span>
+            <small class="text-muted">Tabla de posiciones, goleadores y estadísticas oficiales.</small>
+        </a>
+    </div>
+
+    <div class="col-12 mt-4 text-center">
+        <a href="{{ url_for('logout') }}" class="btn btn-secondary px-4 py-2">
+            🚪 Cerrar Sesión
+        </a>
+    </div>
+</div>
+{% endblock %}
