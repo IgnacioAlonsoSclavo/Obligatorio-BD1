@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-secondary btn-sm">&larr; Volver al Panel de Administrador</a>
+    <span class="badge bg-danger">Módulo Sanciones</span>
+</div>
+
+<!-- Verificador de Suspensiones -->
+<div class="box">
+    <h4 class="fw-bold mb-2">Verificar Habilitación de Jugador</h4>
+    <p class="text-muted small mb-3">Comprueba si un jugador está suspendido para disputar una fecha determinada.</p>
+    <form method="POST" action="{{ url_for('admin_verificar_suspension') }}" class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label fw-semibold">Cédula del Jugador</label>
+            <input type="number" name="ci_jugador" class="form-control" placeholder="12345678" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold">ID Torneo</label>
+            <input type="number" name="id_torneo" class="form-control" value="{{ id_torneo }}" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold">Fecha a Jugar</label>
+            <input type="number" name="numero_fecha" class="form-control" placeholder="1" required>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button type="submit" class="btn btn-outline-primary w-100">Consultar Estado</button>
+        </div>
+    </form>
+</div>
+
+<!-- Tabla de Sanciones -->
+<div class="box">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold mb-0">Sanciones Activas (Torneo #{{ id_torneo }})</h4>
+        <form method="GET" action="{{ url_for('admin_sanciones') }}" class="d-flex align-items-center gap-2">
+            <label class="small text-muted">Torneo:</label>
+            <input type="number" name="id_torneo" value="{{ id_torneo }}" class="form-control form-control-sm" style="width: 70px;">
+            <button type="submit" class="btn btn-sm btn-outline-secondary">Ver</button>
+        </form>
+    </div>
+
+    <table class="table table-bordered table-striped align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 70px;">ID</th>
+                <th>Jugador</th>
+                <th>Cédula</th>
+                <th>Motivo</th>
+                <th>Desde</th>
+                <th>Hasta</th>
+                <th>Partidos</th>
+                <th class="text-center" style="width: 100px;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if sanciones %}
+                {% for s in sanciones %}
+                <tr>
+                    <td>#{{ s.id_sancion }}</td>
+                    <td>{{ s.apellido }}, {{ s.nombre }}</td>
+                    <td>{{ s.ci_jugador }}</td>
+                    <td><strong>{{ s.motivo }}</strong></td>
+                    <td>Fecha {{ s.numero_fecha_inicio }}</td>
+                    <td>Fecha {{ s.fecha_fin }}</td>
+                    <td>{{ s.cantidad_fechas }}</td>
+                    <td class="text-center">
+                        <form method="POST" action="{{ url_for('admin_eliminar_sancion', id_sancion=s.id_sancion, id_torneo=id_torneo) }}" style="display:inline;" onsubmit="return confirm('¿Revocar sanción?');">
+                            <button type="submit" class="btn btn-sm btn-danger">Revocar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="8" class="text-center text-muted py-3">No hay sanciones registradas en este torneo.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Formulario Aplicar Sanción Manual -->
+<div class="box">
+    <h4 class="fw-bold mb-3">Aplicar Sanción Disciplinaria Manual</h4>
+    <form method="POST" action="{{ url_for('admin_crear_sancion') }}" class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label fw-semibold">Cédula del Jugador</label>
+            <input type="number" name="ci_jugador" class="form-control" placeholder="12345678" required>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label fw-semibold">ID Torneo</label>
+            <input type="number" name="id_torneo" class="form-control" value="{{ id_torneo }}" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold">Motivo</label>
+            <select name="motivo" class="form-select" required>
+                <option value="disciplinaria">Disciplinaria (Tribunal)</option>
+                <option value="roja">Roja directa</option>
+                <option value="acumulación de amarillas">Acumulación de amarillas</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label fw-semibold">Fecha Inicio</label>
+            <input type="number" name="numero_fecha_inicio" class="form-control" placeholder="1" required>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label fw-semibold">Cantidad Fechas</label>
+            <input type="number" name="cantidad_fechas" class="form-control" placeholder="1" min="1" required>
+        </div>
+        <div class="col-12 mt-3">
+            <button type="submit" class="btn btn-danger px-4">Confirmar Sanción</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

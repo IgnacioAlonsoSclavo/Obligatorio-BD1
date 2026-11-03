@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="box text-center py-4 mb-4">
+    <h2 class="fw-bold mb-1">Panel de Administrador</h2>
+    <p class="text-muted small mb-0">Sesión iniciada como: <strong>{{ session['usuario']['correo'] }}</strong></p>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <a href="{{ url_for('admin_equipos') }}" class="btn btn-outline-primary btn-lg w-100 py-3 text-start bg-white shadow-sm">
+            <span class="fs-5 fw-bold d-block">🛡️ 1. Gestión de Equipos y Planteles</span>
+            <small class="text-muted">Crear equipos, ver planteles, agregar y quitar jugadores.</small>
+        </a>
+    </div>
+
+    <div class="col-md-6">
+        <a href="{{ url_for('admin_jugadores') }}" class="btn btn-outline-primary btn-lg w-100 py-3 text-start bg-white shadow-sm">
+            <span class="fs-5 fw-bold d-block">🏃 2. Gestión de Jugadores</span>
+            <small class="text-muted">Padrón de jugadores, registro por facultad y bajas.</small>
+        </a>
+    </div>
+
+    <div class="col-md-6">
+        <a href="{{ url_for('admin_sanciones') }}" class="btn btn-outline-danger btn-lg w-100 py-3 text-start bg-white shadow-sm">
+            <span class="fs-5 fw-bold d-block">🟥 3. Gestión de Sanciones</span>
+            <small class="text-muted">Tribunal disciplinario, verificar suspensiones y revocar.</small>
+        </a>
+    </div>
+
+    <div class="col-md-6">
+        <a href="{{ url_for('consultas_publicas') }}" class="btn btn-outline-secondary btn-lg w-100 py-3 text-start bg-white shadow-sm">
+            <span class="fs-5 fw-bold d-block">📊 4. Consultas y Reportes Estadísticos</span>
+            <small class="text-muted">Tabla de posiciones, goleadores y promedios.</small>
+        </a>
+    </div>
+
+    <div class="col-md-12">
+        <a href="{{ url_for('admin_usuarios') }}" class="btn btn-outline-dark btn-lg w-100 py-3 text-start bg-white shadow-sm">
+            <span class="fs-5 fw-bold d-block">👤 5. Registrar Nuevo Usuario</span>
+            <small class="text-muted">Crear cuentas adicionales para otros Administradores o Planilleros.</small>
+        </a>
+    </div>
+
+    <div class="col-12 mt-4 text-center">
+        <a href="{{ url_for('logout') }}" class="btn btn-secondary px-4 py-2">
+            🚪 Cerrar Sesión
+        </a>
+    </div>
+</div>
+{% endblock %}

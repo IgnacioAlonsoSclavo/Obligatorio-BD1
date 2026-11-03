@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="box text-center py-5">
+    <h1 class="h2 fw-bold mb-2">Torneo Interfacultades de Fútbol 5</h1>
+    <p class="text-muted mb-4">Universidad Católica del Uruguay</p>
+
+    <div class="row justify-content-center g-3 my-2">
+        <div class="col-md-5">
+            <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg w-100 py-3 fw-bold">
+                🔑 1. Iniciar Sesión
+                <small class="d-block fw-normal text-white-50 mt-1">Acceso para Admin y Planillero</small>
+            </a>
+        </div>
+        <div class="col-md-5">
+            <a href="{{ url_for('consultas_publicas') }}" class="btn btn-outline-secondary btn-lg w-100 py-3 fw-bold bg-white">
+                📊 2. Consultas Públicas
+                <small class="d-block fw-normal text-muted mt-1">Posiciones, Goleadores y Estadísticas</small>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

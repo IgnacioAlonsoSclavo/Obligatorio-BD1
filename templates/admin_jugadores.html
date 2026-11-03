@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-secondary btn-sm">&larr; Volver al Panel de Administrador</a>
+    <span class="badge bg-primary">Módulo Jugadores</span>
+</div>
+
+<div class="box">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold mb-0">Padrón de Jugadores</h3>
+        <form method="GET" action="{{ url_for('admin_jugadores') }}" class="d-flex align-items-center gap-2">
+            <label class="small text-muted">Facultad:</label>
+            <input type="number" name="id_facultad" value="{{ request.args.get('id_facultad', '') }}" placeholder="Todas" class="form-control form-control-sm" style="width: 80px;">
+            <button type="submit" class="btn btn-sm btn-outline-primary">Filtrar</button>
+            <a href="{{ url_for('admin_jugadores') }}" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+        </form>
+    </div>
+
+    <table class="table table-bordered table-striped table-hover align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Cédula</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>Email</th>
+                <th>Facultad</th>
+                <th>Tipo</th>
+                <th class="text-center" style="width: 100px;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if jugadores %}
+                {% for j in jugadores %}
+                <tr>
+                    <td class="fw-bold">{{ j.ci }}</td>
+                    <td>{{ j.nombre }}</td>
+                    <td>{{ j.apellido }}</td>
+                    <td><small class="text-muted">{{ j.email or '-' }}</small></td>
+                    <td>Facultad {{ j.id_facultad }}</td>
+                    <td>{{ j.tipo|capitalize }}</td>
+                    <td class="text-center">
+                        <form method="POST" action="{{ url_for('admin_eliminar_jugador', ci=j.ci) }}" style="display:inline;" onsubmit="return confirm('¿Eliminar jugador CI {{ j.ci }}?');">
+                            <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="7" class="text-center text-muted py-3">No hay jugadores registrados.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<div class="box">
+    <h4 class="fw-bold mb-3">Registrar Nuevo Jugador</h4>
+    <form method="POST" action="{{ url_for('admin_crear_jugador') }}" class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label fw-semibold">Cédula (CI)</label>
+            <input type="number" name="ci" class="form-control" placeholder="12345678" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold">Nombre</label>
+            <input type="text" name="nombre" class="form-control" placeholder="Juan" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold">Apellido</label>
+            <input type="text" name="apellido" class="form-control" placeholder="Pérez" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold">Tipo</label>
+            <select name="tipo" class="form-select" required>
+                <option value="grado">Estudiante de Grado</option>
+                <option value="posgrado">Estudiante de Posgrado</option>
+                <option value="docente">Docente</option>
+                <option value="funcionario">Funcionario</option>
+            </select>
+        </div>
+        <div class="col-md-5">
+            <label class="form-label fw-semibold">Email Institucional</label>
+            <input type="email" name="email" class="form-control" placeholder="juan.perez@correo.ucu.edu.uy" required>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label fw-semibold">Fecha de Nacimiento</label>
+            <input type="date" name="fecha_nacimiento" class="form-control" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold">Facultad</label>
+            <select name="id_facultad" class="form-select" required>
+                <option value="1">1 - Ingeniería y Tecnologías</option>
+                <option value="2">2 - Ciencias Empresariales</option>
+                <option value="3">3 - Ciencias de la Salud</option>
+                <option value="4">4 - Derecho y Humanidades</option>
+            </select>
+        </div>
+        <div class="col-12 mt-3">
+            <button type="submit" class="btn btn-primary px-4">Guardar Jugador</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
