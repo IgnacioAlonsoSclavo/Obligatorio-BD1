@@ -29,15 +29,22 @@
     </div>
 
     <div class="col-md-6">
+        <a href="{{ url_for('admin_partidos') }}" class="btn btn-outline-success btn-lg w-100 py-3 text-start bg-white shadow-sm">
+            <span class="fs-5 fw-bold d-block">⚽ 4. Gestión del Fixture y Partidos</span>
+            <small class="text-muted">Programar fechas, cruces de equipos, reprogramar y cambiar estados.</small>
+        </a>
+    </div>
+
+    <div class="col-md-6">
         <a href="{{ url_for('consultas_publicas') }}" class="btn btn-outline-secondary btn-lg w-100 py-3 text-start bg-white shadow-sm">
-            <span class="fs-5 fw-bold d-block">📊 4. Consultas y Reportes Estadísticos</span>
+            <span class="fs-5 fw-bold d-block">📊 5. Consultas y Reportes Estadísticos</span>
             <small class="text-muted">Tabla de posiciones, goleadores y promedios.</small>
         </a>
     </div>
 
     <div class="col-md-12">
         <a href="{{ url_for('admin_usuarios') }}" class="btn btn-outline-dark btn-lg w-100 py-3 text-start bg-white shadow-sm">
-            <span class="fs-5 fw-bold d-block">👤 5. Registrar Nuevo Usuario</span>
+            <span class="fs-5 fw-bold d-block">👤 6. Registrar Nuevo Usuario</span>
             <small class="text-muted">Crear cuentas adicionales para otros Administradores o Planilleros.</small>
         </a>
     </div>

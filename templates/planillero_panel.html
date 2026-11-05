@@ -6,25 +6,109 @@
     <p class="text-muted small mb-0">Sesión iniciada como: <strong>{{ session['usuario']['correo'] }}</strong></p>
 </div>
 
-<div class="row g-3">
-    <div class="col-md-6">
-        <div class="box h-100 p-4 border bg-light">
-            <h5 class="fw-bold mb-2">⚽ Carga de Actas de Partidos</h5>
-            <p class="text-muted small mb-3">Registrar jugadores en planilla, registrar goles, tarjetas rojas/amarillas y cerrar actas.</p>
-            <span class="badge bg-warning text-dark">Pendiente completar logica_db/partidos.py</span>
+<!-- Selector de Torneo y Fecha -->
+<div class="box">
+    <form method="GET" action="{{ url_for('planillero_panel') }}" class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label fw-semibold small">Torneo #</label>
+            <input type="number" name="id_torneo" class="form-control form-control-sm" value="{{ id_torneo }}" min="1" required>
         </div>
+        <div class="col-md-4">
+            <label class="form-label fw-semibold small">Número de Fecha</label>
+            <input type="number" name="numero_fecha" class="form-control form-control-sm" value="{{ numero_fecha }}" min="1" required>
+        </div>
+        <div class="col-md-4">
+            <button type="submit" class="btn btn-primary btn-sm w-100">🔍 Buscar Partidos</button>
+        </div>
+    </form>
+</div>
+
+<!-- Partidos Disponibles para Carga de Actas -->
+<div class="box">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="fw-bold mb-0">Partidos - Fecha {{ numero_fecha }}</h4>
+            <small class="text-muted">Seleccione un partido para registrar planilla, goles, tarjetas o cerrarlo como jugado.</small>
+        </div>
+        <span class="badge bg-dark">{{ partidos|length }} partido(s)</span>
     </div>
 
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 60px;">ID</th>
+                    <th>Encuentro</th>
+                    <th>Cancha & Horario</th>
+                    <th class="text-center">Estado / Resultado</th>
+                    <th class="text-center">Jugadores en Planilla</th>
+                    <th class="text-center" style="width: 180px;">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if partidos %}
+                    {% for p in partidos %}
+                    <tr>
+                        <td class="text-muted fw-bold">#{{ p.id_partido }}</td>
+                        <td>
+                            <span class="fw-bold text-primary">{{ p.equipo_local }}</span>
+                            <span class="text-muted small mx-1">vs</span>
+                            <span class="fw-bold text-danger">{{ p.equipo_visitante }}</span>
+                        </td>
+                        <td>
+                            <div>📍 {{ p.nombre_cancha or 'Cancha a confirmar' }}</div>
+                            <small class="text-muted">📅 {{ p.dia or 'Sin fecha' }} {% if p.hora_inicio %}({{ p.hora_inicio }} - {{ p.hora_fin }}){% endif %}</small>
+                        </td>
+                        <td class="text-center">
+                            {% if p.estado == 'programado' %}
+                                <span class="badge bg-primary">Programado</span>
+                            {% elif p.estado == 'jugado' %}
+                                <span class="badge bg-success mb-1">Jugado</span>
+                                {% if p.resultado %}
+                                    <div class="fw-bold">{{ p.resultado.goles_local }} - {{ p.resultado.goles_visitante }}</div>
+                                {% endif %}
+                            {% elif p.estado == 'postergado' %}
+                                <span class="badge bg-warning text-dark">Postergado</span>
+                            {% elif p.estado == 'cancelado' %}
+                                <span class="badge bg-secondary">Cancelado</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-light text-dark border">
+                                {{ p.planilla|length }} jugador(es)
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <a href="{{ url_for('planillero_acta', id_partido=p.id_partido) }}" class="btn btn-sm btn-primary w-100">
+                                📋 Cargar / Ver Acta
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            No se encontraron partidos para la Fecha {{ numero_fecha }} de este torneo.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="row g-3">
     <div class="col-md-6">
-        <a href="{{ url_for('consultas_publicas') }}" class="btn btn-outline-secondary btn-lg w-100 h-100 py-4 text-start bg-white shadow-sm d-flex flex-column justify-content-center">
+        <a href="{{ url_for('consultas_publicas') }}" class="btn btn-outline-secondary btn-lg w-100 py-3 text-start bg-white shadow-sm d-flex flex-column justify-content-center">
             <span class="fs-5 fw-bold d-block">📊 Consultas y Reportes Estadísticos</span>
             <small class="text-muted">Tabla de posiciones, goleadores y estadísticas oficiales.</small>
         </a>
     </div>
 
-    <div class="col-12 mt-4 text-center">
-        <a href="{{ url_for('logout') }}" class="btn btn-secondary px-4 py-2">
-            🚪 Cerrar Sesión
+    <div class="col-md-6">
+        <a href="{{ url_for('logout') }}" class="btn btn-outline-dark btn-lg w-100 py-3 text-start bg-white shadow-sm d-flex flex-column justify-content-center">
+            <span class="fs-5 fw-bold d-block">🚪 Cerrar Sesión</span>
+            <small class="text-muted">Salir del sistema de forma segura.</small>
         </a>
     </div>
 </div>

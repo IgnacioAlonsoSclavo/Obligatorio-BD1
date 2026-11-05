@@ -20,6 +20,12 @@ from logica_db.reportes import (
     obtener_porcentaje_estados_partidos, obtener_jugadores_sin_minutos,
     sanciones_por_equipo_y_motivo
 )
+from logica_db.partidos import (
+    programar_partido, modificar_partido, listar_partidos_por_fecha, obtener_partido,
+    registrar_jugador_en_planilla, registrar_gol, registrar_tarjeta,
+    cerrar_partido_como_jugado, obtener_planilla_partido, obtener_resultado_partido,
+    obtener_goles_partido, obtener_tarjetas_partido, listar_canchas, listar_turnos
+)
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -332,7 +338,82 @@ def admin_verificar_suspension():
     return redirect(url_for("admin_sanciones", id_torneo=id_torneo))
 
 
-# 4. Gestión de Usuarios
+# 4. Gestión de Fixture y Partidos
+@app.route("/admin/partidos")
+@admin_requerido
+def admin_partidos():
+    id_torneo = request.args.get("id_torneo", 1, type=int)
+    numero_fecha = request.args.get("numero_fecha", 1, type=int)
+    partidos = listar_partidos_por_fecha(id_torneo, numero_fecha)
+    for p in partidos:
+        if p["estado"] == "jugado":
+            p["resultado"] = obtener_resultado_partido(p["id_partido"])
+    equipos = listar_equipos(id_torneo)
+    canchas = listar_canchas()
+    turnos = listar_turnos()
+    return render_template(
+        "admin_partidos.html",
+        id_torneo=id_torneo,
+        numero_fecha=numero_fecha,
+        partidos=partidos,
+        equipos=equipos,
+        canchas=canchas,
+        turnos=turnos
+    )
+
+
+@app.route("/admin/partidos/programar", methods=["POST"])
+@admin_requerido
+def admin_programar_partido():
+    id_torneo = request.form.get("id_torneo", type=int)
+    numero_fecha = request.form.get("numero_fecha", type=int)
+    id_equipo_local = request.form.get("id_equipo_local", type=int)
+    id_equipo_visitante = request.form.get("id_equipo_visitante", type=int)
+    dia = request.form.get("dia", "").strip()
+    id_turno = request.form.get("id_turno", type=int)
+    cancha_complejo = request.form.get("cancha_complejo", "").strip()
+
+    nombre_cancha = ""
+    id_complejo = None
+    if "|" in cancha_complejo:
+        partes = cancha_complejo.split("|")
+        nombre_cancha = partes[0].strip()
+        id_complejo = int(partes[1].strip())
+
+    if programar_partido(id_torneo, numero_fecha, id_equipo_local, id_equipo_visitante, dia, id_turno, nombre_cancha, id_complejo):
+        flash("Partido programado exitosamente.", "success")
+    else:
+        flash("No se pudo programar el partido. Verifique que ambos equipos tengan al menos 5 jugadores en el torneo, no jueguen dos veces en la misma fecha ni repitan cruce en la edición, y que la cancha esté libre en ese turno.", "danger")
+
+    return redirect(url_for("admin_partidos", id_torneo=id_torneo, numero_fecha=numero_fecha))
+
+
+@app.route("/admin/partidos/<int:id_partido>/modificar", methods=["POST"])
+@admin_requerido
+def admin_modificar_partido(id_partido):
+    id_torneo = request.form.get("id_torneo", 1, type=int)
+    numero_fecha = request.form.get("numero_fecha", 1, type=int)
+    dia = request.form.get("dia", "").strip() or None
+    id_turno = request.form.get("id_turno", type=int)
+    cancha_complejo = request.form.get("cancha_complejo", "").strip()
+    estado = request.form.get("estado", "").strip()
+
+    nombre_cancha = None
+    id_complejo = None
+    if cancha_complejo and "|" in cancha_complejo:
+        partes = cancha_complejo.split("|")
+        nombre_cancha = partes[0].strip()
+        id_complejo = int(partes[1].strip())
+
+    if modificar_partido(id_partido, dia, id_turno, nombre_cancha, id_complejo, estado):
+        flash("Partido modificado exitosamente.", "success")
+    else:
+        flash("Error al modificar partido. No se puede modificar un partido ya jugado, ni asignar una cancha ocupada en ese turno.", "danger")
+
+    return redirect(url_for("admin_partidos", id_torneo=id_torneo, numero_fecha=numero_fecha))
+
+
+# 5. Gestión de Usuarios
 @app.route("/admin/usuarios")
 @admin_requerido
 def admin_usuarios():
@@ -355,16 +436,118 @@ def admin_crear_usuario():
 
 
 # -------------------------------------------------------------
-# Panel de Planillero
+# Panel de Planillero y Carga de Actas
 # -------------------------------------------------------------
 
 @app.route("/planillero")
 @login_requerido
 def planillero_panel():
-    return render_template("planillero_panel.html")
+    id_torneo = request.args.get("id_torneo", 1, type=int)
+    numero_fecha = request.args.get("numero_fecha", 1, type=int)
+    partidos = listar_partidos_por_fecha(id_torneo, numero_fecha)
+    for p in partidos:
+        p["resultado"] = obtener_resultado_partido(p["id_partido"])
+        p["planilla"] = obtener_planilla_partido(p["id_partido"])
+    return render_template(
+        "planillero_panel.html",
+        id_torneo=id_torneo,
+        numero_fecha=numero_fecha,
+        partidos=partidos
+    )
+
+
+@app.route("/planillero/partido/<int:id_partido>")
+@login_requerido
+def planillero_acta(id_partido):
+    partido = obtener_partido(id_partido)
+    if not partido:
+        flash("Partido no encontrado.", "danger")
+        return redirect(url_for("planillero_panel"))
+
+    equipo_local = obtener_equipo(partido["id_equipo_local"])
+    equipo_visitante = obtener_equipo(partido["id_equipo_visitante"])
+    partido["equipo_local"] = equipo_local["nombre"] if equipo_local else f"Equipo #{partido['id_equipo_local']}"
+    partido["equipo_visitante"] = equipo_visitante["nombre"] if equipo_visitante else f"Equipo #{partido['id_equipo_visitante']}"
+
+    resultado = obtener_resultado_partido(id_partido)
+    planilla = obtener_planilla_partido(id_partido)
+    goles = obtener_goles_partido(id_partido)
+    tarjetas = obtener_tarjetas_partido(id_partido)
+
+    plantel_local = obtener_plantel(partido["id_equipo_local"], partido["id_torneo"])
+    plantel_visitante = obtener_plantel(partido["id_equipo_visitante"], partido["id_torneo"])
+    cis_en_planilla = {j["ci_jugador"] for j in planilla}
+
+    return render_template(
+        "planillero_acta.html",
+        partido=partido,
+        resultado=resultado,
+        planilla=planilla,
+        goles=goles,
+        tarjetas=tarjetas,
+        plantel_local=plantel_local,
+        plantel_visitante=plantel_visitante,
+        cis_en_planilla=cis_en_planilla
+    )
+
+
+@app.route("/planillero/partido/<int:id_partido>/agregar-jugador", methods=["POST"])
+@login_requerido
+def planillero_agregar_jugador(id_partido):
+    ci_jugador = request.form.get("ci_jugador", type=int)
+    id_equipo = request.form.get("id_equipo", type=int)
+
+    if registrar_jugador_en_planilla(id_partido, ci_jugador, id_equipo):
+        flash(f"Jugador CI {ci_jugador} inscripto exitosamente en la planilla.", "success")
+    else:
+        flash("No se pudo inscribir al jugador en la planilla. Verifique que pertenezca al plantel y NO esté suspendido para esta fecha.", "danger")
+
+    return redirect(url_for("planillero_acta", id_partido=id_partido))
+
+
+@app.route("/planillero/partido/<int:id_partido>/registrar-gol", methods=["POST"])
+@login_requerido
+def planillero_registrar_gol(id_partido):
+    ci_jugador = request.form.get("ci_jugador", type=int)
+    minuto = request.form.get("minuto", type=int)
+    autogol = request.form.get("autogol") in ("1", "true", "True", True)
+
+    if registrar_gol(id_partido, ci_jugador, minuto, autogol):
+        flash("Gol registrado exitosamente.", "success")
+    else:
+        flash("No se pudo registrar el gol. El jugador debe figurar previamente en la planilla de este partido.", "danger")
+
+    return redirect(url_for("planillero_acta", id_partido=id_partido))
+
+
+@app.route("/planillero/partido/<int:id_partido>/registrar-tarjeta", methods=["POST"])
+@login_requerido
+def planillero_registrar_tarjeta(id_partido):
+    ci_jugador = request.form.get("ci_jugador", type=int)
+    minuto = request.form.get("minuto", type=int)
+    color = request.form.get("color", "").strip().lower()
+
+    if registrar_tarjeta(id_partido, ci_jugador, minuto, color):
+        flash(f"Tarjeta {color} registrada exitosamente.", "success")
+    else:
+        flash("No se pudo registrar la tarjeta. El jugador debe figurar previamente en la planilla.", "danger")
+
+    return redirect(url_for("planillero_acta", id_partido=id_partido))
+
+
+@app.route("/planillero/partido/<int:id_partido>/cerrar", methods=["POST"])
+@login_requerido
+def planillero_cerrar_partido(id_partido):
+    if cerrar_partido_como_jugado(id_partido):
+        flash("¡Partido cerrado como JUGADO con éxito! Las sanciones automáticas por rojas directas y acumulación de 3 amarillas fueron aplicadas para la fecha siguiente.", "success")
+    else:
+        flash("No se pudo cerrar el partido como jugado. Recuerde que según el reglamento de la UCU el partido solo puede cerrarse una vez transcurrido el horario del turno.", "danger")
+
+    return redirect(url_for("planillero_acta", id_partido=id_partido))
 
 
 if __name__ == "__main__":
     puerto = int(os.environ.get("PORT", 5000))
-    print(f"Servidor iniciado en http://127.0.0.1:{puerto}")
-    app.run(debug=True, host="127.0.0.1", port=puerto)
+    host = os.environ.get("HOST", "0.0.0.0")
+    print(f"Servidor iniciado en http://{host}:{puerto}")
+    app.run(debug=True, host=host, port=puerto)

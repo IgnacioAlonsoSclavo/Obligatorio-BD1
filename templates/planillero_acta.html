@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <a href="{{ url_for('planillero_panel') }}" class="btn btn-outline-secondary btn-sm">&larr; Volver al Panel de Planillero</a>
+    {% if session['usuario']['rol'] == 'admin' %}
+        <a href="{{ url_for('admin_partidos', id_torneo=partido.id_torneo, numero_fecha=partido.numero_fecha) }}" class="btn btn-outline-primary btn-sm">Volver al Fixture (Admin)</a>
+    {% endif %}
+</div>
+
+<!-- Cabecera del Encuentro y Marcador -->
+<div class="box text-center py-4 mb-4">
+    <div class="small text-muted mb-1">
+        Torneo #{{ partido.id_torneo }} &bull; Fecha {{ partido.numero_fecha }} &bull; Partido #{{ partido.id_partido }}
+    </div>
+    
+    <div class="row align-items-center my-3">
+        <div class="col-5 text-end">
+            <h3 class="fw-bold text-primary mb-0">{{ partido.equipo_local }}</h3>
+            <span class="badge bg-light text-muted border">Local</span>
+        </div>
+        <div class="col-2">
+            <div class="display-5 fw-bold text-dark">
+                {{ resultado.goles_local if resultado else 0 }} - {{ resultado.goles_visitante if resultado else 0 }}
+            </div>
+            {% if partido.estado == 'jugado' %}
+                <span class="badge bg-success">FINALIZADO</span>
+            {% elif partido.estado == 'programado' %}
+                <span class="badge bg-primary">EN CURSO / PROGRAMADO</span>
+            {% elif partido.estado == 'postergado' %}
+                <span class="badge bg-warning text-dark">POSTERGADO</span>
+            {% else %}
+                <span class="badge bg-secondary">{{ partido.estado|upper }}</span>
+            {% endif %}
+        </div>
+        <div class="col-5 text-start">
+            <h3 class="fw-bold text-danger mb-0">{{ partido.equipo_visitante }}</h3>
+            <span class="badge bg-light text-muted border">Visitante</span>
+        </div>
+    </div>
+
+    <div class="text-muted small mt-2">
+        📍 <strong>{{ partido.nombre_cancha or 'Cancha a confirmar' }}</strong> (Complejo #{{ partido.id_complejo }})
+        &bull; 📅 <strong>{{ partido.dia or 'Sin fecha' }}</strong>
+        {% if partido.id_turno %}&bull; ⏰ Turno #{{ partido.id_turno }}{% endif %}
+    </div>
+</div>
+
+<!-- SECCIÓN 1: PLANILLA DE JUEGO (JUGADORES HABILITADOS EN CANCHA) -->
+<div class="box">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="fw-bold mb-0">👥 Planilla de Juego</h4>
+            <small class="text-muted">Solo los jugadores que figuren en esta planilla pueden jugar, anotar goles o recibir tarjetas.</small>
+        </div>
+        <span class="badge bg-dark">{{ planilla|length }} jugador(es) en acta</span>
+    </div>
+
+    <div class="table-responsive mb-4">
+        <table class="table table-bordered table-striped table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Equipo</th>
+                    <th>Cédula (CI)</th>
+                    <th>Jugador</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if planilla %}
+                    {% for j in planilla %}
+                    <tr>
+                        <td class="fw-bold {% if j.id_equipo == partido.id_equipo_local %}text-primary{% else %}text-danger{% endif %}">
+                            {{ j.equipo }}
+                        </td>
+                        <td>{{ j.ci_jugador }}</td>
+                        <td>{{ j.apellido }}, {{ j.nombre }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="3" class="text-center text-muted py-3">
+                            Aún no se han registrado jugadores en la planilla de este partido.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Formulario para agregar jugador a planilla -->
+    {% if partido.estado == 'programado' %}
+    <div class="p-3 bg-light rounded border">
+        <h6 class="fw-bold mb-2">➕ Inscribir Jugador en la Planilla de Juego</h6>
+        <p class="small text-muted mb-3">
+            El sistema comprobará que pertenezca al plantel y <strong>NO esté suspendido</strong> para esta fecha.
+        </p>
+
+        <form method="POST" action="{{ url_for('planillero_agregar_jugador', id_partido=partido.id_partido) }}" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label fw-semibold small">Equipo</label>
+                <select name="id_equipo" class="form-select form-select-sm" required id="selectEquipoPlanilla">
+                    <option value="">-- Seleccionar Equipo --</option>
+                    <option value="{{ partido.id_equipo_local }}">{{ partido.equipo_local }} (Local)</option>
+                    <option value="{{ partido.id_equipo_visitante }}">{{ partido.equipo_visitante }} (Visitante)</option>
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label fw-semibold small">Cédula del Jugador (CI)</label>
+                <input type="number" name="ci_jugador" class="form-control form-control-sm" placeholder="Ej: 51234567" required>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary btn-sm w-100">Agregar al Acta</button>
+            </div>
+        </form>
+
+        <!-- Sugerencia rápida de jugadores del plantel -->
+        <div class="mt-3 small text-muted">
+            <details>
+                <summary class="cursor-pointer text-primary">Ver lista de jugadores inscriptos en los planteles de ambos equipos</summary>
+                <div class="row mt-2">
+                    <div class="col-md-6">
+                        <strong>{{ partido.equipo_local }}:</strong>
+                        <ul class="mb-0 ps-3">
+                            {% for pl in plantel_local %}
+                                <li>CI {{ pl.ci_jugador }} - {{ pl.apellido }}, {{ pl.nombre }} (#{{ pl.numero_camiseta }}) {% if pl.ci_jugador in cis_en_planilla %}<span class="badge bg-success">en planilla</span>{% endif %}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>{{ partido.equipo_visitante }}:</strong>
+                        <ul class="mb-0 ps-3">
+                            {% for pv in plantel_visitante %}
+                                <li>CI {{ pv.ci_jugador }} - {{ pv.apellido }}, {{ pv.nombre }} (#{{ pv.numero_camiseta }}) {% if pv.ci_jugador in cis_en_planilla %}<span class="badge bg-success">en planilla</span>{% endif %}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </details>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- SECCIÓN 2 Y 3: GOLES Y TARJETAS EN DOS COLUMNAS -->
+<div class="row g-3 mb-4">
+    <!-- GOLES -->
+    <div class="col-md-6">
+        <div class="box h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0">⚽ Goles del Partido</h5>
+                <span class="badge bg-dark">{{ goles|length }}</span>
+            </div>
+
+            <table class="table table-sm table-bordered align-middle mb-3">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 55px;">Min</th>
+                        <th>Jugador / Equipo</th>
+                        <th>Tipo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if goles %}
+                        {% for g in goles %}
+                        <tr>
+                            <td class="fw-bold">{{ g.minuto }}'</td>
+                            <td>
+                                <strong>{{ g.apellido }}, {{ g.nombre }}</strong>
+                                <small class="text-muted d-block">{{ g.nombre_equipo }}</small>
+                            </td>
+                            <td>
+                                {% if g.autogol %}
+                                    <span class="badge bg-danger">Autogol</span>
+                                {% else %}
+                                    <span class="badge bg-success">Gol</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="3" class="text-center text-muted py-2 small">No hay goles registrados.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+
+            {% if partido.estado == 'programado' or partido.estado == 'jugado' %}
+            <div class="p-2 bg-light rounded border">
+                <h6 class="fw-bold small mb-2">Registrar Nuevo Gol</h6>
+                <form method="POST" action="{{ url_for('planillero_registrar_gol', id_partido=partido.id_partido) }}" class="row g-2">
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Jugador (debe estar en planilla)</label>
+                        <select name="ci_jugador" class="form-select form-select-sm" required>
+                            <option value="">-- Seleccionar Jugador --</option>
+                            {% for j in planilla %}
+                                <option value="{{ j.ci_jugador }}">CI {{ j.ci_jugador }} - {{ j.apellido }}, {{ j.nombre }} ({{ j.equipo }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Minuto</label>
+                        <input type="number" name="minuto" class="form-control form-control-sm" min="0" placeholder="Ej: 15" required>
+                    </div>
+                    <div class="col-6 d-flex align-items-center pt-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="autogol" value="1" id="checkAutogol">
+                            <label class="form-check-label small fw-semibold" for="checkAutogol">¿Fue Autogol?</label>
+                        </div>
+                    </div>
+                    <div class="col-12 mt-2">
+                        <button type="submit" class="btn btn-success btn-sm w-100" {% if not planilla %}disabled{% endif %}>
+                            ⚽ Registrar Gol
+                        </button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- TARJETAS -->
+    <div class="col-md-6">
+        <div class="box h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0">🟨🟥 Tarjetas</h5>
+                <span class="badge bg-dark">{{ tarjetas|length }}</span>
+            </div>
+
+            <table class="table table-sm table-bordered align-middle mb-3">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 55px;">Min</th>
+                        <th>Jugador / Equipo</th>
+                        <th>Tarjeta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if tarjetas %}
+                        {% for t in tarjetas %}
+                        <tr>
+                            <td class="fw-bold">{{ t.minuto }}'</td>
+                            <td>
+                                <strong>{{ t.apellido }}, {{ t.nombre }}</strong>
+                                <small class="text-muted d-block">{{ t.nombre_equipo }}</small>
+                            </td>
+                            <td>
+                                {% if t.color == 'amarilla' %}
+                                    <span class="badge bg-warning text-dark">Amarilla</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Roja Directa</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="3" class="text-center text-muted py-2 small">No se registraron tarjetas.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+
+            {% if partido.estado == 'programado' %}
+            <div class="p-2 bg-light rounded border">
+                <h6 class="fw-bold small mb-2">Registrar Tarjeta</h6>
+                <form method="POST" action="{{ url_for('planillero_registrar_tarjeta', id_partido=partido.id_partido) }}" class="row g-2">
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Jugador (debe estar en planilla)</label>
+                        <select name="ci_jugador" class="form-select form-select-sm" required>
+                            <option value="">-- Seleccionar Jugador --</option>
+                            {% for j in planilla %}
+                                <option value="{{ j.ci_jugador }}">CI {{ j.ci_jugador }} - {{ j.apellido }}, {{ j.nombre }} ({{ j.equipo }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Minuto</label>
+                        <input type="number" name="minuto" class="form-control form-control-sm" min="0" placeholder="Ej: 30" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Color</label>
+                        <select name="color" class="form-select form-select-sm" required>
+                            <option value="amarilla">Amarilla 🟨</option>
+                            <option value="roja">Roja 🟥</option>
+                        </select>
+                    </div>
+                    <div class="col-12 mt-2">
+                        <button type="submit" class="btn btn-warning btn-sm w-100 text-dark fw-bold" {% if not planilla %}disabled{% endif %}>
+                            Registrar Tarjeta
+                        </button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- SECCIÓN 4: CIERRE DEL ACTA Y SANCIONES AUTOMÁTICAS -->
+<div class="box">
+    <h5 class="fw-bold mb-2">🏁 Cierre del Partido</h5>
+    
+    {% if partido.estado == 'jugado' %}
+        <div class="alert alert-success d-flex align-items-center mb-0">
+            <span class="fs-4 me-3">✅</span>
+            <div>
+                <strong>Este partido ya se encuentra cerrado como JUGADO.</strong><br>
+                <small>Las sanciones automáticas por tarjetas rojas o acumulación de 3 amarillas fueron generadas para la fecha siguiente. El resultado oficial quedó registrado en la tabla de posiciones.</small>
+            </div>
+        </div>
+    {% elif partido.estado == 'programado' %}
+        <p class="text-muted small mb-3">
+            Al finalizar el encuentro, presione el siguiente botón para dar por concluido el partido. 
+            <strong>El sistema verificará que la hora de finalización del turno ya haya pasado</strong> y automáticamente aplicará las sanciones disciplinarias correspondientes por tarjetas rojas o acumulación de 3 amarillas para la próxima fecha.
+        </p>
+        
+        <form method="POST" action="{{ url_for('planillero_cerrar_partido', id_partido=partido.id_partido) }}" onsubmit="return confirm('¿Está seguro de cerrar el partido como JUGADO? Se registrarán las sanciones automáticas correspondientes.');">
+            <button type="submit" class="btn btn-danger btn-lg w-100 py-3 fw-bold">
+                🔒 Cerrar Partido como JUGADO (Aplicar Sanciones Automáticas)
+            </button>
+        </form>
+    {% else %}
+        <div class="alert alert-secondary mb-0">
+            Este partido se encuentra en estado <strong>{{ partido.estado }}</strong>. Para cargar planillas debe ser reprogramado por un administrador.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

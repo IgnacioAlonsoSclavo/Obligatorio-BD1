@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-secondary btn-sm">&larr; Volver al Panel de Administrador</a>
+    <span class="badge bg-success">Módulo de Partidos & Fixture</span>
+</div>
+
+<!-- Filtro por Torneo y Fecha -->
+<div class="box">
+    <form method="GET" action="{{ url_for('admin_partidos') }}" class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label fw-semibold small">Torneo (Edición)</label>
+            <input type="number" name="id_torneo" class="form-control form-control-sm" value="{{ id_torneo }}" min="1" required>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label fw-semibold small">Número de Fecha</label>
+            <input type="number" name="numero_fecha" class="form-control form-control-sm" value="{{ numero_fecha }}" min="1" required>
+        </div>
+        <div class="col-md-4">
+            <button type="submit" class="btn btn-primary btn-sm w-100">🔍 Ver Partidos de la Fecha</button>
+        </div>
+    </form>
+</div>
+
+<!-- Lista de Partidos de la Fecha -->
+<div class="box">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="fw-bold mb-0">Partidos - Fecha {{ numero_fecha }} (Torneo #{{ id_torneo }})</h4>
+            <small class="text-muted">Fixture oficial programado para esta jornada.</small>
+        </div>
+        <span class="badge bg-dark">{{ partidos|length }} partido(s)</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 60px;">ID</th>
+                    <th>Cruce de Equipos</th>
+                    <th>Cancha & Complejo</th>
+                    <th>Día & Horario</th>
+                    <th class="text-center">Estado / Resultado</th>
+                    <th class="text-center" style="width: 170px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if partidos %}
+                    {% for p in partidos %}
+                    <tr>
+                        <td class="text-muted fw-bold">#{{ p.id_partido }}</td>
+                        <td>
+                            <span class="fw-bold text-primary">{{ p.equipo_local }}</span>
+                            <span class="text-muted small mx-1">vs</span>
+                            <span class="fw-bold text-danger">{{ p.equipo_visitante }}</span>
+                        </td>
+                        <td>
+                            {% if p.nombre_cancha %}
+                                <strong>{{ p.nombre_cancha }}</strong>
+                                <small class="text-muted d-block">Complejo #{{ p.id_complejo }}</small>
+                            {% else %}
+                                <span class="text-muted small">Sin asignar</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if p.dia %}
+                                <div>📅 {{ p.dia }}</div>
+                                {% if p.hora_inicio %}
+                                    <small class="text-muted">⏰ {{ p.hora_inicio }} - {{ p.hora_fin }}</small>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted small">Fecha a definir</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if p.estado == 'programado' %}
+                                <span class="badge bg-primary">Programado</span>
+                            {% elif p.estado == 'jugado' %}
+                                <span class="badge bg-success mb-1">Jugado</span>
+                                {% if p.resultado %}
+                                    <div class="fw-bold fs-6">{{ p.resultado.goles_local }} - {{ p.resultado.goles_visitante }}</div>
+                                {% endif %}
+                            {% elif p.estado == 'postergado' %}
+                                <span class="badge bg-warning text-dark">Postergado</span>
+                            {% elif p.estado == 'cancelado' %}
+                                <span class="badge bg-secondary">Cancelado</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if p.estado != 'jugado' %}
+                                <button type="button" class="btn btn-sm btn-outline-secondary mb-1 w-100" data-bs-toggle="modal" data-bs-target="#modalModificar{{ p.id_partido }}">
+                                    ✏️ Modificar
+                                </button>
+                            {% else %}
+                                <span class="badge bg-light text-muted border w-100 mb-1">No modificable</span>
+                            {% endif %}
+                            <a href="{{ url_for('planillero_acta', id_partido=p.id_partido) }}" class="btn btn-sm btn-outline-info w-100">
+                                📋 Ver Acta
+                            </a>
+                        </td>
+                    </tr>
+
+                    <!-- Modal para Modificar Partido -->
+                    {% if p.estado != 'jugado' %}
+                    <div class="modal fade" id="modalModificar{{ p.id_partido }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="POST" action="{{ url_for('admin_modificar_partido', id_partido=p.id_partido) }}">
+                                    <input type="hidden" name="id_torneo" value="{{ id_torneo }}">
+                                    <input type="hidden" name="numero_fecha" value="{{ numero_fecha }}">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title fw-bold">Modificar Partido #{{ p.id_partido }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="small text-muted mb-3">{{ p.equipo_local }} vs {{ p.equipo_visitante }}</p>
+
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Estado del Partido</label>
+                                            <select name="estado" class="form-select" required>
+                                                <option value="programado" {% if p.estado == 'programado' %}selected{% endif %}>Programado</option>
+                                                <option value="postergado" {% if p.estado == 'postergado' %}selected{% endif %}>Postergado</option>
+                                                <option value="cancelado" {% if p.estado == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Día del Encuentro</label>
+                                            <input type="date" name="dia" class="form-control" value="{{ p.dia or '' }}">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Turno (Horario)</label>
+                                            <select name="id_turno" class="form-select">
+                                                <option value="">-- Seleccionar Turno --</option>
+                                                {% for t in turnos %}
+                                                    <option value="{{ t.id_turno }}" {% if p.id_turno == t.id_turno %}selected{% endif %}>
+                                                        Turno #{{ t.id_turno }} ({{ t.hora_inicio }} - {{ t.hora_fin }})
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Cancha y Complejo</label>
+                                            <select name="cancha_complejo" class="form-select">
+                                                <option value="">-- Seleccionar Cancha --</option>
+                                                {% for c in canchas %}
+                                                    {% set val = c.nombre_cancha ~ '|' ~ c.id_complejo %}
+                                                    <option value="{{ val }}" {% if p.nombre_cancha == c.nombre_cancha and p.id_complejo == c.id_complejo %}selected{% endif %}>
+                                                        {{ c.complejo }} - {{ c.nombre_cancha }} ({{ c.superficie }}{% if c.techada %}, techada{% endif %})
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary btn-sm">Guardar Cambios</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            No hay partidos programados para la Fecha {{ numero_fecha }} de este torneo.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Formulario para Programar Partido -->
+<div class="box">
+    <h4 class="fw-bold mb-2">⚽ Programar Nuevo Partido</h4>
+    <p class="text-muted small mb-3">
+        El sistema validará automáticamente las 4 reglas del torneo: ambos equipos deben pertenecer a esta edición y tener &ge; 5 jugadores en plantilla, no haberse enfrentado previamente en la edición, no jugar más de una vez en esta fecha y que la cancha esté libre en ese turno.
+    </p>
+
+    <form method="POST" action="{{ url_for('admin_programar_partido') }}" class="row g-3">
+        <input type="hidden" name="id_torneo" value="{{ id_torneo }}">
+        <input type="hidden" name="numero_fecha" value="{{ numero_fecha }}">
+
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Equipo Local</label>
+            <select name="id_equipo_local" class="form-select" required>
+                <option value="">-- Seleccionar Local --</option>
+                {% for eq in equipos %}
+                    <option value="{{ eq.id_equipo }}">{{ eq.nombre }} (Facultad {{ eq.id_facultad }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Equipo Visitante</label>
+            <select name="id_equipo_visitante" class="form-select" required>
+                <option value="">-- Seleccionar Visitante --</option>
+                {% for eq in equipos %}
+                    <option value="{{ eq.id_equipo }}">{{ eq.nombre }} (Facultad {{ eq.id_facultad }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label fw-semibold">Día del Partido</label>
+            <input type="date" name="dia" class="form-control" required>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label fw-semibold">Turno (Horario)</label>
+            <select name="id_turno" class="form-select" required>
+                <option value="">-- Seleccionar Turno --</option>
+                {% for t in turnos %}
+                    <option value="{{ t.id_turno }}">Turno #{{ t.id_turno }} ({{ t.hora_inicio }} - {{ t.hora_fin }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label fw-semibold">Cancha y Complejo</label>
+            <select name="cancha_complejo" class="form-select" required>
+                <option value="">-- Seleccionar Cancha --</option>
+                {% for c in canchas %}
+                    <option value="{{ c.nombre_cancha }}|{{ c.id_complejo }}">
+                        {{ c.complejo }} - {{ c.nombre_cancha }} ({{ c.superficie }}{% if c.techada %}, techada{% endif %})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-12 mt-3">
+            <button type="submit" class="btn btn-success px-4">
+                ➕ Programar Partido
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
