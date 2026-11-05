@@ -229,6 +229,61 @@ def jugadores_por_facultad_y_tipo():
             cursor.close()
             conexion.close()
 
+def equipos_por_facultad(id_torneo):
+    if type(id_torneo) is not int or id_torneo <= 0:
+        raise ValueError("El ID del torneo debe ser un entero positivo.")
+
+    query = """
+        SELECT
+            f.id_facultad,
+            f.nombre AS facultad,
+            COUNT(e.id_equipo) AS cantidad_equipos
+        FROM facultad AS f
+        INNER JOIN equipo AS e
+            ON e.id_facultad = f.id_facultad
+        WHERE e.id_torneo = %s
+        GROUP BY f.id_facultad, f.nombre
+        ORDER BY cantidad_equipos DESC, f.nombre, f.id_facultad
+    """
+
+    with obtener_conexion() as conexion:
+        with conexion.cursor(dictionary=True) as cursor:
+            cursor.execute(query, (id_torneo,))
+            return cursor.fetchall()
+
+
+def canchas_techadas_por_complejo():
+    query = """
+        SELECT
+            co.id_complejo,
+            co.nombre AS complejo,
+            COUNT(ca.nombre_cancha) AS cantidad_canchas_techadas
+        FROM complejo AS co
+        LEFT JOIN cancha AS ca
+            ON ca.id_complejo = co.id_complejo
+           AND ca.techada = TRUE
+        GROUP BY co.id_complejo, co.nombre
+        ORDER BY cantidad_canchas_techadas DESC, co.nombre, co.id_complejo
+    """
+
+    with obtener_conexion() as conexion:
+        with conexion.cursor(dictionary=True) as cursor:
+            cursor.execute(query)
+            return cursor.fetchall()
+
+
+def cantidad_torneos_en_curso():
+    query = """
+        SELECT COUNT(*) AS cantidad
+        FROM torneo
+        WHERE estado = 'en curso'
+    """
+
+    with obtener_conexion() as conexion:
+        with conexion.cursor(dictionary=True) as cursor:
+            cursor.execute(query)
+            return cursor.fetchone()["cantidad"]
+
 
 if __name__ == "__main__":
     ID_TORNEO = 1  # Se debe crear un torneo antes
