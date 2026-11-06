@@ -26,7 +26,7 @@
                 <th>Email</th>
                 <th>Facultad</th>
                 <th>Tipo</th>
-                <th class="text-center" style="width: 100px;">Acciones</th>
+                <th class="text-center" style="width: 170px;">Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -40,9 +40,66 @@
                     <td>Facultad {{ j.id_facultad }}</td>
                     <td>{{ j.tipo|capitalize }}</td>
                     <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditarJugador{{ j.ci }}">
+                            ✏️ Editar
+                        </button>
                         <form method="POST" action="{{ url_for('admin_eliminar_jugador', ci=j.ci) }}" style="display:inline;" onsubmit="return confirm('¿Eliminar jugador CI {{ j.ci }}?');">
                             <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
                         </form>
+
+                        <!-- Modal Editar Jugador -->
+                        <div class="modal fade" id="modalEditarJugador{{ j.ci }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog text-start">
+                                <div class="modal-content">
+                                    <form method="POST" action="{{ url_for('admin_modificar_jugador', ci=j.ci) }}">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title fw-bold">Editar Jugador - CI {{ j.ci }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-semibold">Nombre</label>
+                                                <input type="text" name="nombre" class="form-control" value="{{ j.nombre }}" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-semibold">Apellido</label>
+                                                <input type="text" name="apellido" class="form-control" value="{{ j.apellido }}" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-semibold">Email</label>
+                                                <input type="email" name="email" class="form-control" value="{{ j.email }}" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-semibold">Fecha de Nacimiento</label>
+                                                <input type="date" name="fecha_nacimiento" class="form-control" value="{{ j.fecha_nacimiento }}" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-semibold">Facultad</label>
+                                                <select name="id_facultad" class="form-select" required>
+                                                    <option value="1" {% if j.id_facultad == 1 %}selected{% endif %}>1 - Ingeniería y Tecnologías</option>
+                                                    <option value="2" {% if j.id_facultad == 2 %}selected{% endif %}>2 - Ciencias Empresariales</option>
+                                                    <option value="3" {% if j.id_facultad == 3 %}selected{% endif %}>3 - Ciencias de la Salud</option>
+                                                    <option value="4" {% if j.id_facultad == 4 %}selected{% endif %}>4 - Derecho y Humanidades</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-semibold">Tipo / Condición</label>
+                                                <select name="tipo" class="form-select" required>
+                                                    <option value="grado" {% if j.tipo == 'grado' %}selected{% endif %}>Estudiante de Grado</option>
+                                                    <option value="posgrado" {% if j.tipo == 'posgrado' %}selected{% endif %}>Estudiante de Posgrado</option>
+                                                    <option value="docente" {% if j.tipo == 'docente' %}selected{% endif %}>Docente</option>
+                                                    <option value="funcionario" {% if j.tipo == 'funcionario' %}selected{% endif %}>Funcionario</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-primary btn-sm">Guardar Cambios</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

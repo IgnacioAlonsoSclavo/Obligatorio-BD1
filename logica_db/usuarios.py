@@ -1,34 +1,54 @@
-from operator import truediv
-
 from logica_db.conexion import obtener_conexion
 from mysql.connector import Error
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # 1. Recibir un correo y una contraseña.
-# 2. Preguntarle a MySQL si existe esa combinación.
-# 3. Si existe, devolver los datos del usuario (principalmente su rol).
-# 4. Si no existe o la contraseña está mal, devolver None.
-
-# Voy a usar fetchone(), dictoinary=True y parametros seguros %s en tupla
+# 2. Buscar al usuario por correo.
+# 3. Validar el hash de la contraseña (o migrarla si estaba en texto plano).
+# 4. Si es válida, devolver los datos del usuario (principalmente su rol). Si no, None.
 
 def validar_login(correo, contrasenia):
     conexion = obtener_conexion()
     cursor = conexion.cursor(dictionary=True)
     try:
         query = """
-            SELECT correo, rol
+            SELECT correo, contraseña, rol
             FROM login
-            WHERE correo = %s AND contraseña = %s
+            WHERE correo = %s
         """
-        cursor.execute(query, (correo,contrasenia))
+        cursor.execute(query, (correo,))
         usuario = cursor.fetchone()
-        return usuario
+
+        if not usuario:
+            return None
+
+        hash_guardado = usuario.get("contraseña", "")
+
+        # 1. Comprobación segura del hash
+        if check_password_hash(hash_guardado, contrasenia):
+            return {"correo": usuario["correo"], "rol": usuario["rol"]}
+
+        # 2. Migración transparente si la contraseña estaba previamente en texto plano
+        if hash_guardado == contrasenia:
+            nuevo_hash = generate_password_hash(contrasenia)
+            cursor.execute(
+                "UPDATE login SET contraseña = %s WHERE correo = %s",
+                (nuevo_hash, correo)
+            )
+            conexion.commit()
+            return {"correo": usuario["correo"], "rol": usuario["rol"]}
+
+        return None
     finally:
         cursor.close()
         conexion.close()
 
 def crear_usuario(correo, contrasenia, rol):
-    if not validar_entrada(correo,contrasenia,rol):
+    if not validar_entrada(correo, contrasenia, rol):
         return False
+
+    hash_contrasenia = generate_password_hash(contrasenia)
+
     conexion = obtener_conexion()
     cursor = conexion.cursor()
 
@@ -37,7 +57,7 @@ def crear_usuario(correo, contrasenia, rol):
             INSERT INTO login (correo, contraseña, rol)
             VALUES (%s, %s, %s)
         """
-        cursor.execute(query,(correo,contrasenia,rol))
+        cursor.execute(query, (correo, hash_contrasenia, rol))
         conexion.commit()
         return True
     except Error as e:

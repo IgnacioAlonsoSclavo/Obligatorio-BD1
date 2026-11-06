@@ -38,9 +38,36 @@
                     </td>
                     <td class="text-center">
                         <a href="{{ url_for('admin_plantel', id_equipo=e.id_equipo) }}" class="btn btn-sm btn-info text-white">Ver Plantel</a>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditarEquipo{{ e.id_equipo }}">
+                            ✏️ Renombrar
+                        </button>
                         <form method="POST" action="{{ url_for('admin_eliminar_equipo', id_equipo=e.id_equipo) }}" style="display:inline;" onsubmit="return confirm('¿Seguro que desea eliminar el equipo?');">
                             <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
                         </form>
+
+                        <!-- Modal Editar Equipo -->
+                        <div class="modal fade" id="modalEditarEquipo{{ e.id_equipo }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog text-start">
+                                <div class="modal-content">
+                                    <form method="POST" action="{{ url_for('admin_modificar_equipo', id_equipo=e.id_equipo) }}">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title fw-bold">Modificar Nombre del Equipo</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-semibold">Nombre del Equipo</label>
+                                                <input type="text" name="nombre" class="form-control" value="{{ e.nombre }}" required>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-primary btn-sm">Guardar Nombre</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

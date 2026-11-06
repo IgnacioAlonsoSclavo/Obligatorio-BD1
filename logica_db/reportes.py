@@ -62,18 +62,22 @@ def tabla_posiciones(id_torneo):
     try:
         cursor = conexion.cursor(dictionary=True)
         cursor.execute("""
-                       SELECT r.id_equipo,
-                              r.partidos_jugados,
-                              g.goles_a_favor,
-                              g.goles_en_contra,
-                              g.diferencia_de_goles,
-                              r.ganados,
-                              r.empatados,
-                              r.perdidos,
-                              r.puntos
-                       FROM resultados_equipo r JOIN goles_equipo g ON g.id_equipo = r.id_equipo JOIN equipo e ON e.id_equipo = r.id_equipo
-                       WHERE e.id_torneo = %s
-                       """, (id_torneo,))
+            SELECT r.id_equipo,
+                   e.nombre AS nombre_equipo,
+                   r.partidos_jugados,
+                   g.goles_a_favor,
+                   g.goles_en_contra,
+                   g.diferencia_de_goles,
+                   r.ganados,
+                   r.empatados,
+                   r.perdidos,
+                   r.puntos
+            FROM resultados_equipo r
+            JOIN goles_equipo g ON g.id_equipo = r.id_equipo
+            JOIN equipo e ON e.id_equipo = r.id_equipo
+            WHERE e.id_torneo = %s
+            ORDER BY r.puntos DESC, g.diferencia_de_goles DESC, g.goles_a_favor DESC;
+        """, (id_torneo,))
         resultado = cursor.fetchall()
         cursor.close()
         return resultado
@@ -193,17 +197,126 @@ def tabla_fair_play(id_torneo):
     try:
         cursor = conexion.cursor(dictionary=True)
         cursor.execute("""
-            SELECT e.id_equipo, e.nombre,
-                   SUM(IF(p.id_torneo = ejt.id_torneo,
-                          IF(t.color = 'amarilla', 1, IF(t.color = 'roja', 3, 0)),
-                          0)) AS puntos_fair_play
-            FROM equipo_jugador_torneo ejt
-            JOIN equipo e ON e.id_equipo = ejt.id_equipo
+            SELECT e.id_equipo,
+                   e.nombre AS nombre_equipo,
+                   COALESCE(SUM(IF(p.id_torneo = %s AND t.color = 'amarilla', 1, 0)), 0) AS amarillas,
+                   COALESCE(SUM(IF(p.id_torneo = %s AND t.color = 'roja', 1, 0)), 0) AS rojas,
+                   COALESCE(SUM(IF(p.id_torneo = %s,
+                                   IF(t.color = 'amarilla', 1, IF(t.color = 'roja', 3, 0)),
+                                   0)), 0) AS puntos_fair_play
+            FROM equipo e
+            LEFT JOIN equipo_jugador_torneo ejt ON ejt.id_equipo = e.id_equipo AND ejt.id_torneo = e.id_torneo
             LEFT JOIN tarjeta t ON t.ci_jugador = ejt.ci_jugador
-            LEFT JOIN partido p ON p.id_partido = t.id_partido
-            WHERE ejt.id_torneo = %s
+            LEFT JOIN partido p ON p.id_partido = t.id_partido AND p.id_torneo = %s
+            WHERE e.id_torneo = %s
             GROUP BY e.id_equipo, e.nombre
-            ORDER BY puntos_fair_play ASC
+            ORDER BY puntos_fair_play ASC, rojas ASC, amarillas ASC;
+        """, (id_torneo, id_torneo, id_torneo, id_torneo, id_torneo))
+        resultado = cursor.fetchall()
+        cursor.close()
+        return resultado
+    finally:
+        conexion.close()
+
+
+def jugadores_por_facultad_y_tipo():
+    conexion = obtener_conexion()
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT f.id_facultad,
+                   f.nombre AS nombre_facultad,
+                   COUNT(IF(j.tipo = 'grado', 1, NULL)) AS total_grado,
+                   COUNT(IF(j.tipo = 'posgrado', 1, NULL)) AS total_posgrado,
+                   COUNT(IF(j.tipo = 'docente', 1, NULL)) AS total_docente,
+                   COUNT(IF(j.tipo = 'funcionario', 1, NULL)) AS total_funcionario,
+                   COUNT(j.ci) AS total_jugadores
+            FROM facultad f
+            LEFT JOIN jugador j ON f.id_facultad = j.id_facultad
+            GROUP BY f.id_facultad, f.nombre
+            ORDER BY f.id_facultad ASC;
+        """)
+        resultado = cursor.fetchall()
+        cursor.close()
+        return resultado
+    finally:
+        conexion.close()
+
+
+def mejor_defensa(id_torneo):
+    conexion = obtener_conexion()
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT e.id_equipo,
+                   e.nombre AS nombre_equipo,
+                   r.partidos_jugados,
+                   g.goles_en_contra,
+                   ROUND(g.goles_en_contra / r.partidos_jugados, 2) AS promedio_recibidos
+            FROM resultados_equipo r
+            JOIN goles_equipo g ON g.id_equipo = r.id_equipo
+            JOIN equipo e ON e.id_equipo = r.id_equipo
+            WHERE e.id_torneo = %s AND r.partidos_jugados > 0
+            ORDER BY promedio_recibidos ASC, g.goles_en_contra ASC;
+        """, (id_torneo,))
+        resultado = cursor.fetchall()
+        cursor.close()
+        return resultado
+    finally:
+        conexion.close()
+
+
+def efectividad_local_visitante(id_torneo):
+    conexion = obtener_conexion()
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT 
+                SUM(IF(goles_local > goles_visitante, 1, 0)) AS victorias_local,
+                SUM(IF(goles_visitante > goles_local, 1, 0)) AS victorias_visitante,
+                SUM(IF(goles_local = goles_visitante, 1, 0)) AS empates,
+                COUNT(*) AS total_jugados
+            FROM goles_por_partido gp
+            JOIN partido p ON p.id_partido = gp.id_partido
+            WHERE p.id_torneo = %s AND p.estado = 'jugado';
+        """, (id_torneo,))
+        fila = cursor.fetchone()
+        cursor.close()
+        if not fila or not fila["total_jugados"]:
+            return {"total": 0, "vic_local": 0, "vic_visitante": 0, "empates": 0, "pct_local": 0, "pct_visitante": 0, "pct_empate": 0}
+
+        total = fila["total_jugados"]
+        vl = fila["victorias_local"] or 0
+        vv = fila["victorias_visitante"] or 0
+        em = fila["empates"] or 0
+        return {
+            "total": total,
+            "vic_local": vl,
+            "vic_visitante": vv,
+            "empates": em,
+            "pct_local": round((vl / total) * 100, 1),
+            "pct_visitante": round((vv / total) * 100, 1),
+            "pct_empate": round((em / total) * 100, 1)
+        }
+    finally:
+        conexion.close()
+
+
+def goles_por_tipo_jugador(id_torneo):
+    conexion = obtener_conexion()
+    try:
+        cursor = conexion.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT j.tipo AS tipo_jugador,
+                   COUNT(g.id_gol) AS total_goles,
+                   COUNT(DISTINCT j.ci) AS cantidad_goleadores,
+                   ROUND(COUNT(g.id_gol) / COUNT(DISTINCT j.ci), 2) AS promedio_por_goleador
+            FROM gol g
+            JOIN jugador j ON g.ci_jugador = j.ci
+            JOIN partido p ON g.id_partido = p.id_partido
+            WHERE p.id_torneo = %s AND g.autogol = FALSE
+            GROUP BY j.tipo
+            ORDER BY total_goles DESC;
         """, (id_torneo,))
         resultado = cursor.fetchall()
         cursor.close()

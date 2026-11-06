@@ -43,7 +43,7 @@
                 {% for p in posiciones %}
                 <tr>
                     <td>{{ loop.index }}</td>
-                    <td class="fw-bold">Equipo #{{ p.id_equipo }}</td>
+                    <td class="fw-bold text-start">{{ p.nombre_equipo }} <small class="text-muted fw-normal">(#{{ p.id_equipo }})</small></td>
                     <td>{{ p.partidos_jugados }}</td>
                     <td>{{ p.ganados }}</td>
                     <td>{{ p.empatados }}</td>
@@ -90,9 +90,44 @@
     </table>
 </div>
 
-<!-- 3. Promedio de Goles -->
+<!-- 3. Tabla de Fair Play -->
 <div class="box">
-    <h5 class="fw-bold mb-2">3. Promedio de Goles</h5>
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="fw-bold mb-0">3. Tabla de Fair Play (Juego Limpio)</h5>
+        <span class="badge bg-success">Menor puntaje = Mejor conducta</span>
+    </div>
+    <p class="text-muted small mb-3">Puntaje oficial: 1 punto por cada tarjeta amarilla y 3 puntos por cada tarjeta roja.</p>
+    <table class="table table-bordered table-striped table-hover text-center align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 50px;">#</th>
+                <th class="text-start">Equipo</th>
+                <th>🟨 Amarillas (1 pto)</th>
+                <th>🟥 Rojas (3 ptos)</th>
+                <th class="fw-bold">Puntos Fair Play</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if fair_play %}
+                {% for fp in fair_play %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td class="fw-bold text-start">{{ fp.nombre_equipo }} <small class="text-muted fw-normal">(#{{ fp.id_equipo }})</small></td>
+                    <td>{{ fp.amarillas }}</td>
+                    <td>{{ fp.rojas }}</td>
+                    <td class="fw-bold text-success">{{ fp.puntos_fair_play }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="5" class="text-muted py-2">Sin registros de conducta para este torneo.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 4. Promedio de Goles -->
+<div class="box">
+    <h5 class="fw-bold mb-2">4. Promedio de Goles</h5>
     <p class="text-muted small">Promedio general de la edición: <strong>{{ promedio_edicion }}</strong> goles por partido.</p>
     <table class="table table-bordered table-sm align-middle mb-0">
         <thead class="table-light">
@@ -156,9 +191,77 @@
     </div>
 </div>
 
-<!-- 6. Estados de Partidos -->
+<!-- 6. Padrón de Jugadores por Facultad y Tipo -->
 <div class="box">
-    <h5 class="fw-bold mb-2">6. Porcentaje de Estados de Partidos</h5>
+    <h5 class="fw-bold mb-2">6. Padrón de Jugadores por Facultad y Condición</h5>
+    <p class="text-muted small mb-3">Distribución de jugadores registrados según su facultad de pertenencia y tipo institucional (grado, posgrado, docente, funcionario).</p>
+    <table class="table table-bordered table-striped table-hover text-center align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 50px;">ID</th>
+                <th class="text-start">Facultad</th>
+                <th>Grado</th>
+                <th>Posgrado</th>
+                <th>Docentes</th>
+                <th>Funcionarios</th>
+                <th class="fw-bold table-primary">Total Jugadores</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in por_facultad %}
+            <tr>
+                <td>#{{ f.id_facultad }}</td>
+                <td class="text-start fw-semibold">{{ f.nombre_facultad }}</td>
+                <td>{{ f.total_grado }}</td>
+                <td>{{ f.total_posgrado }}</td>
+                <td>{{ f.total_docente }}</td>
+                <td>{{ f.total_funcionario }}</td>
+                <td class="fw-bold table-primary">{{ f.total_jugadores }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-muted py-2">Sin datos de facultades o jugadores.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 7. Jugadores en Plantel sin Minutos -->
+<div class="box">
+    <h5 class="fw-bold mb-2">7. Jugadores en Plantel sin Minutos</h5>
+    <table class="table table-bordered table-sm align-middle mb-0">
+        <thead class="table-light">
+            <tr><th>#</th><th>Jugador</th><th>Cédula</th><th>Equipo</th></tr>
+        </thead>
+        <tbody>
+            {% for j in sin_minutos %}
+            <tr><td>#{{ j.numero_camiseta }}</td><td>{{ j.apellido }}, {{ j.nombre }}</td><td>{{ j.ci }}</td><td>{{ j.nombre_equipo }}</td></tr>
+            {% else %}
+            <tr><td colspan="4" class="text-muted text-center py-2">Todos los jugadores inscritos han participado de partidos.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 8. Sanciones por Equipo -->
+<div class="box">
+    <h5 class="fw-bold mb-2">8. Sanciones por Equipo y Motivo</h5>
+    <table class="table table-bordered table-sm align-middle mb-0">
+        <thead class="table-light">
+            <tr><th>Equipo</th><th>Motivo</th><th class="text-end">Cantidad</th></tr>
+        </thead>
+        <tbody>
+            {% for s in sanciones_equipo %}
+            <tr><td>{{ s.nombre }} (#{{ s.id_equipo }})</td><td>{{ s.motivo }}</td><td class="text-end fw-bold">{{ s.cantidad }}</td></tr>
+            {% else %}
+            <tr><td colspan="3" class="text-muted text-center py-2">Sin sanciones registradas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 9. Estados de Partidos -->
+<div class="box">
+    <h5 class="fw-bold mb-2">9. Porcentaje de Estados de Partidos</h5>
     <table class="table table-bordered table-sm text-center mb-0">
         <thead class="table-light">
             <tr>
@@ -177,37 +280,75 @@
     </table>
 </div>
 
-<!-- 7. Sanciones por Equipo -->
-<div class="box">
-    <h5 class="fw-bold mb-2">7. Sanciones por Equipo y Motivo</h5>
-    <table class="table table-bordered table-sm align-middle mb-0">
-        <thead class="table-light">
-            <tr><th>Equipo</th><th>Motivo</th><th class="text-end">Cantidad</th></tr>
-        </thead>
-        <tbody>
-            {% for s in sanciones_equipo %}
-            <tr><td>{{ s.nombre }} (#{{ s.id_equipo }})</td><td>{{ s.motivo }}</td><td class="text-end fw-bold">{{ s.cantidad }}</td></tr>
-            {% else %}
-            <tr><td colspan="3" class="text-muted text-center py-2">Sin sanciones registradas.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+<!-- Consultas Adicionales Sugeridas por el Grupo -->
+<div class="box mt-4 border-primary">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <h4 class="fw-bold text-primary mb-0">Consultas Adicionales del Grupo</h4>
+        <span class="badge bg-primary">Requisito Pág. 3</span>
+    </div>
+    <p class="text-muted small mb-3">Tres métricas analíticas formuladas e implementadas por el equipo de desarrollo.</p>
 
-<!-- 8. Sin Minutos -->
-<div class="box">
-    <h5 class="fw-bold mb-2">8. Jugadores en Plantel sin Minutos</h5>
-    <table class="table table-bordered table-sm align-middle mb-0">
-        <thead class="table-light">
-            <tr><th>#</th><th>Jugador</th><th>Cédula</th><th>Equipo</th></tr>
-        </thead>
-        <tbody>
-            {% for j in sin_minutos %}
-            <tr><td>#{{ j.numero_camiseta }}</td><td>{{ j.apellido }}, {{ j.nombre }}</td><td>{{ j.ci }}</td><td>{{ j.nombre_equipo }}</td></tr>
-            {% else %}
-            <tr><td colspan="4" class="text-muted text-center py-2">Todos los jugadores inscritos han participado de partidos.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <!-- 10. Mejor Defensa -->
+    <div class="mb-4">
+        <h6 class="fw-bold">10. Ranking de Mejor Defensa (Menor Promedio de Goles Recibidos)</h6>
+        <table class="table table-bordered table-sm text-center align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>#</th><th class="text-start">Equipo</th><th>Partidos</th><th>Goles Recibidos</th><th class="fw-bold text-success">Promedio Goles/Partido</th></tr>
+            </thead>
+            <tbody>
+                {% for d in defensa %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td class="text-start fw-semibold">{{ d.nombre_equipo }} <small class="text-muted">(#{{ d.id_equipo }})</small></td>
+                    <td>{{ d.partidos_jugados }}</td>
+                    <td>{{ d.goles_en_contra }}</td>
+                    <td class="fw-bold text-success">{{ d.promedio_recibidos }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-muted py-2">Sin partidos jugados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 11. Efectividad Local vs Visitante -->
+    <div class="mb-4">
+        <h6 class="fw-bold">11. Efectividad Local vs. Visitante</h6>
+        <table class="table table-bordered table-sm text-center align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>Total Partidos Jugados</th><th>Victorias Local</th><th>Empates</th><th>Victorias Visitante</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="fw-bold">{{ efectividad.total }}</td>
+                    <td class="text-primary fw-bold">{{ efectividad.vic_local }} <small class="text-muted">({{ efectividad.pct_local }}%)</small></td>
+                    <td class="text-secondary fw-bold">{{ efectividad.empates }} <small class="text-muted">({{ efectividad.pct_empate }}%)</small></td>
+                    <td class="text-danger fw-bold">{{ efectividad.vic_visitante }} <small class="text-muted">({{ efectividad.pct_visitante }}%)</small></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 12. Goles por Condición de Integrante -->
+    <div>
+        <h6 class="fw-bold">12. Aporte Goleador por Condición de Integrante</h6>
+        <table class="table table-bordered table-sm text-center align-middle mb-0">
+            <thead class="table-light">
+                <tr><th class="text-start">Tipo de Jugador</th><th>Total Goles</th><th>Cantidad Goleadores</th><th>Promedio Goles/Anotador</th></tr>
+            </thead>
+            <tbody>
+                {% for gt in goles_tipo %}
+                <tr>
+                    <td class="text-start fw-semibold">{{ gt.tipo_jugador|capitalize }}</td>
+                    <td class="fw-bold text-danger">{{ gt.total_goles }}</td>
+                    <td>{{ gt.cantidad_goleadores }}</td>
+                    <td class="fw-bold">{{ gt.promedio_por_goleador }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="text-muted py-2">Sin goles registrados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

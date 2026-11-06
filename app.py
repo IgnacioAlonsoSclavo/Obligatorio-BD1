@@ -8,7 +8,7 @@ from logica_db.equipos import (
     listar_equipos, agregar_jugador, quitar_jugador_de_plantel, obtener_plantel
 )
 from logica_db.jugadores import (
-    crear_jugador, eliminar_jugador, listar_jugadores, listar_jugadores_por_facultad
+    crear_jugador, modificar_jugador, eliminar_jugador, listar_jugadores, listar_jugadores_por_facultad
 )
 from logica_db.sanciones import (
     crear_sancion, eliminar_sancion, listar_sanciones_por_torneo,
@@ -18,13 +18,19 @@ from logica_db.reportes import (
     tabla_posiciones, goleadores, promedios_goles,
     canchas_mas_usadas, turnos_mas_usados,
     obtener_porcentaje_estados_partidos, obtener_jugadores_sin_minutos,
-    sanciones_por_equipo_y_motivo
+    sanciones_por_equipo_y_motivo, tabla_fair_play,
+    jugadores_por_facultad_y_tipo, mejor_defensa,
+    efectividad_local_visitante, goles_por_tipo_jugador
 )
 from logica_db.partidos import (
     programar_partido, modificar_partido, listar_partidos_por_fecha, obtener_partido,
     registrar_jugador_en_planilla, registrar_gol, registrar_tarjeta,
     cerrar_partido_como_jugado, obtener_planilla_partido, obtener_resultado_partido,
     obtener_goles_partido, obtener_tarjetas_partido, listar_canchas, listar_turnos
+)
+from logica_db.complejos import (
+    listar_complejos, crear_complejo, eliminar_complejo,
+    listar_canchas_completo, crear_cancha, eliminar_cancha
 )
 
 app = Flask(__name__)
@@ -139,6 +145,11 @@ def consultas_publicas():
     estados = obtener_porcentaje_estados_partidos(id_torneo)
     sin_min = obtener_jugadores_sin_minutos(id_torneo)
     sanc_equipo = sanciones_por_equipo_y_motivo()
+    fair_play = tabla_fair_play(id_torneo)
+    por_facultad = jugadores_por_facultad_y_tipo()
+    defensa = mejor_defensa(id_torneo)
+    efectividad = efectividad_local_visitante(id_torneo)
+    goles_tipo = goles_por_tipo_jugador(id_torneo)
 
     return render_template(
         "consultas_publicas.html",
@@ -151,7 +162,12 @@ def consultas_publicas():
         turnos=turnos,
         estados=estados,
         sin_minutos=sin_min,
-        sanciones_equipo=sanc_equipo
+        sanciones_equipo=sanc_equipo,
+        fair_play=fair_play,
+        por_facultad=por_facultad,
+        defensa=defensa,
+        efectividad=efectividad,
+        goles_tipo=goles_tipo
     )
 
 
@@ -196,6 +212,17 @@ def admin_designar_capitan(id_equipo, ci):
     else:
         flash("Error al designar capitán.", "danger")
     return redirect(url_for("admin_plantel", id_equipo=id_equipo))
+
+
+@app.route("/admin/equipos/<int:id_equipo>/modificar", methods=["POST"])
+@admin_requerido
+def admin_modificar_equipo(id_equipo):
+    nombre = request.form.get("nombre", "").strip() or None
+    if modificar_equipo(id_equipo, nombre=nombre):
+        flash("Equipo actualizado exitosamente.", "success")
+    else:
+        flash("Error al modificar el equipo.", "danger")
+    return redirect(url_for("admin_equipos"))
 
 
 @app.route("/admin/equipos/<int:id_equipo>/eliminar", methods=["POST"])
@@ -273,6 +300,23 @@ def admin_crear_jugador():
         flash(f"Jugador {nombre} {apellido} registrado con éxito.", "success")
     else:
         flash("Error al registrar el jugador. Verifique los datos o si la cédula ya existe.", "danger")
+    return redirect(url_for("admin_jugadores"))
+
+
+@app.route("/admin/jugadores/<int:ci>/modificar", methods=["POST"])
+@admin_requerido
+def admin_modificar_jugador(ci):
+    nombre = request.form.get("nombre", "").strip() or None
+    apellido = request.form.get("apellido", "").strip() or None
+    email = request.form.get("email", "").strip() or None
+    fecha_nac = request.form.get("fecha_nacimiento", "").strip() or None
+    id_facultad = request.form.get("id_facultad", type=int)
+    tipo = request.form.get("tipo", "").strip() or None
+
+    if modificar_jugador(ci, nombre, apellido, email, fecha_nac, id_facultad, tipo):
+        flash(f"Datos del jugador CI {ci} actualizados exitosamente.", "success")
+    else:
+        flash(f"Error al modificar el jugador CI {ci}.", "danger")
     return redirect(url_for("admin_jugadores"))
 
 
@@ -413,7 +457,72 @@ def admin_modificar_partido(id_partido):
     return redirect(url_for("admin_partidos", id_torneo=id_torneo, numero_fecha=numero_fecha))
 
 
-# 5. Gestión de Usuarios
+# 5. Gestión de Complejos y Canchas
+@app.route("/admin/complejos")
+@admin_requerido
+def admin_complejos():
+    complejos = listar_complejos()
+    canchas = listar_canchas_completo()
+    return render_template("admin_complejos.html", complejos=complejos, canchas=canchas)
+
+
+@app.route("/admin/complejos/crear", methods=["POST"])
+@admin_requerido
+def admin_crear_complejo():
+    nombre = request.form.get("nombre", "").strip()
+    direccion = request.form.get("direccion", "").strip()
+    departamento = request.form.get("departamento", "").strip()
+
+    if crear_complejo(nombre, direccion, departamento):
+        flash(f"Complejo '{nombre}' registrado exitosamente.", "success")
+    else:
+        flash("Error al registrar complejo. Verifique que los campos no estén vacíos.", "danger")
+
+    return redirect(url_for("admin_complejos"))
+
+
+@app.route("/admin/complejos/<int:id_complejo>/eliminar", methods=["POST"])
+@admin_requerido
+def admin_eliminar_complejo(id_complejo):
+    if eliminar_complejo(id_complejo):
+        flash("Complejo eliminado exitosamente.", "success")
+    else:
+        flash("No se pudo eliminar el complejo. Verifique que no posea canchas o partidos asociados.", "danger")
+
+    return redirect(url_for("admin_complejos"))
+
+
+@app.route("/admin/canchas/crear", methods=["POST"])
+@admin_requerido
+def admin_crear_cancha():
+    nombre_cancha = request.form.get("nombre_cancha", "").strip()
+    id_complejo = request.form.get("id_complejo", type=int)
+    superficie = request.form.get("superficie", "sintético").strip()
+    techada = request.form.get("techada") in ("1", "true", "True", True)
+
+    if crear_cancha(nombre_cancha, id_complejo, superficie, techada):
+        flash(f"Cancha '{nombre_cancha}' agregada exitosamente.", "success")
+    else:
+        flash("Error al crear la cancha. Verifique que el nombre no esté duplicado en ese complejo.", "danger")
+
+    return redirect(url_for("admin_complejos"))
+
+
+@app.route("/admin/canchas/eliminar", methods=["POST"])
+@admin_requerido
+def admin_eliminar_cancha():
+    nombre_cancha = request.form.get("nombre_cancha", "").strip()
+    id_complejo = request.form.get("id_complejo", type=int)
+
+    if eliminar_cancha(nombre_cancha, id_complejo):
+        flash("Cancha eliminada exitosamente.", "success")
+    else:
+        flash("No se pudo eliminar la cancha. Verifique que no tenga partidos asignados.", "danger")
+
+    return redirect(url_for("admin_complejos"))
+
+
+# 6. Gestión de Usuarios
 @app.route("/admin/usuarios")
 @admin_requerido
 def admin_usuarios():

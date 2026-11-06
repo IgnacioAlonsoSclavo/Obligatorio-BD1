@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-secondary btn-sm">&larr; Volver al Panel de Administrador</a>
+    <span class="badge bg-secondary">Infraestructura Deportiva</span>
+</div>
+
+<!-- ========================================================= -->
+<!-- 1. COMPLEJOS DEPORTIVOS -->
+<!-- ========================================================= -->
+<div class="box mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3 class="fw-bold mb-0">Complejos Deportivos</h3>
+            <p class="text-muted small mb-0">Sedes habilitadas para la disputa del Torneo Interfacultades.</p>
+        </div>
+        <span class="badge bg-dark">{{ complejos|length }} Complejo(s)</span>
+    </div>
+
+    <table class="table table-bordered table-striped table-hover align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 70px;">ID</th>
+                <th>Nombre del Complejo</th>
+                <th>Dirección</th>
+                <th>Departamento</th>
+                <th class="text-center" style="width: 100px;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for co in complejos %}
+            <tr>
+                <td class="fw-bold">#{{ co.id_complejo }}</td>
+                <td class="fw-semibold">{{ co.nombre }}</td>
+                <td>{{ co.dirección }}</td>
+                <td><span class="badge bg-light text-dark border">{{ co.departamento }}</span></td>
+                <td class="text-center">
+                    <form method="POST" action="{{ url_for('admin_eliminar_complejo', id_complejo=co.id_complejo) }}" style="display:inline;" onsubmit="return confirm('¿Eliminar complejo {{ co.nombre }}? Se cancelará si posee canchas activas.');">
+                        <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-3">No hay complejos registrados.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="box mb-5">
+    <h5 class="fw-bold mb-2">Registrar Nuevo Complejo</h5>
+    <form method="POST" action="{{ url_for('admin_crear_complejo') }}" class="row g-3">
+        <div class="col-md-5">
+            <label class="form-label fw-semibold small">Nombre del Complejo</label>
+            <input type="text" name="nombre" class="form-control" placeholder="Ej: Polideportivo San Ignacio" required>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label fw-semibold small">Dirección</label>
+            <input type="text" name="direccion" class="form-control" placeholder="Ej: Av. 8 de Octubre 2738" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold small">Departamento</label>
+            <input type="text" name="departamento" class="form-control" value="Montevideo" required>
+        </div>
+        <div class="col-12 mt-3">
+            <button type="submit" class="btn btn-primary px-4">Guardar Complejo</button>
+        </div>
+    </form>
+</div>
+
+<!-- ========================================================= -->
+<!-- 2. CANCHAS -->
+<!-- ========================================================= -->
+<div class="box mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3 class="fw-bold mb-0">Canchas Disponibles</h3>
+            <p class="text-muted small mb-0">Canchas de fútbol 5 registradas en cada complejo.</p>
+        </div>
+        <span class="badge bg-dark">{{ canchas|length }} Cancha(s)</span>
+    </div>
+
+    <table class="table table-bordered table-striped table-hover align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Nombre de Cancha</th>
+                <th>Complejo Perteneciente</th>
+                <th>Superficie</th>
+                <th class="text-center">Techada</th>
+                <th class="text-center" style="width: 100px;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in canchas %}
+            <tr>
+                <td class="fw-bold">{{ c.nombre_cancha }}</td>
+                <td>{{ c.nombre_complejo }} <small class="text-muted">(#{{ c.id_complejo }})</small></td>
+                <td><span class="badge bg-secondary">{{ c.superficie|capitalize }}</span></td>
+                <td class="text-center">
+                    {% if c.techada %}
+                        <span class="badge bg-success">Sí (Techada)</span>
+                    {% else %}
+                        <span class="badge bg-light text-muted border">No (Abierta)</span>
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    <form method="POST" action="{{ url_for('admin_eliminar_cancha') }}" style="display:inline;" onsubmit="return confirm('¿Eliminar la cancha {{ c.nombre_cancha }} del complejo {{ c.nombre_complejo }}?');">
+                        <input type="hidden" name="nombre_cancha" value="{{ c.nombre_cancha }}">
+                        <input type="hidden" name="id_complejo" value="{{ c.id_complejo }}">
+                        <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-3">No hay canchas registradas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="box">
+    <h5 class="fw-bold mb-2">Registrar Nueva Cancha</h5>
+    <form method="POST" action="{{ url_for('admin_crear_cancha') }}" class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label fw-semibold small">Nombre de la Cancha</label>
+            <input type="text" name="nombre_cancha" class="form-control" placeholder="Ej: Cancha 1" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold small">Complejo</label>
+            <select name="id_complejo" class="form-select" required>
+                {% for co in complejos %}
+                    <option value="{{ co.id_complejo }}">{{ co.nombre }} ({{ co.departamento }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold small">Superficie</label>
+            <select name="superficie" class="form-select" required>
+                <option value="sintético">Césped Sintético</option>
+                <option value="parquet">Parquet</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label fw-semibold small">¿Es Techada?</label>
+            <select name="techada" class="form-select" required>
+                <option value="1">Sí (Techada)</option>
+                <option value="0">No (Abierta)</option>
+            </select>
+        </div>
+        <div class="col-12 mt-3">
+            <button type="submit" class="btn btn-primary px-4">Guardar Cancha</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
