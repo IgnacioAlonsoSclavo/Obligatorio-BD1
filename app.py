@@ -740,7 +740,7 @@ def planillero_eliminar_tarjeta(id_partido, id_tarjeta):
     if eliminar_tarjeta(id_tarjeta):
         flash("Tarjeta eliminada exitosamente.", "success")
     else:
-        flash("No se pudo eliminar la tarjeta. Verifique si el partido sigue dentro de las 48 horas reglamentarias.", "danger")
+        flash("No se pudo eliminar la tarjeta. Solo se pueden eliminar tarjetas antes de cerrar el partido como jugado.", "danger")
 
     return redirect(url_for("planillero_acta", id_partido=id_partido))
 

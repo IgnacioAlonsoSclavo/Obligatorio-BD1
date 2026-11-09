@@ -38,7 +38,11 @@ def obtener_porcentaje_estados_partidos(id_torneo):
         filas = cursor.fetchall()
 
         if not filas:
-            return {"jugados": 0.0, "postergados_cancelados": 0.0}
+            return {
+                "total_partidos": 0,
+                "porcentaje_jugados": 0.0,
+                "porcentaje_postergados_cancelados": 0.0
+            }
         #como me traje solo los 'jugados', 'cancelados' y 'postergados' el total son ellos
         total = sum(f["cantidad"] for f in filas)
         #solo los que tienen estado 'jugado'

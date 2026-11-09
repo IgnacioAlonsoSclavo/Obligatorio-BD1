@@ -468,15 +468,8 @@ def eliminar_tarjeta(id_tarjeta):
                 DELETE t
                 FROM tarjeta t
                 JOIN partido p ON p.id_partido = t.id_partido
-                LEFT JOIN turno tu ON tu.id_turno = p.id_turno
                 WHERE t.id_tarjeta = %s
-                  AND (
-                      p.estado = 'programado'
-                      OR (
-                          p.estado = 'jugado'
-                          AND TIMESTAMP(p.dia, tu.hora_fin) >= NOW() - INTERVAL 48 HOUR
-                      )
-                  )
+                  AND p.estado = 'programado'
                 """
         cursor.execute(query, (id_tarjeta,))
         conexion.commit()

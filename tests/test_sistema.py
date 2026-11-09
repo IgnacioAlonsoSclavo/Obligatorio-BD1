@@ -20,6 +20,7 @@ from logica_db.partidos import (
     obtener_goles_partido, registrar_tarjeta, eliminar_tarjeta,
     obtener_tarjetas_partido
 )
+from app import app
 from logica_db.reportes import (
     tabla_posiciones, goleadores, promedios_goles, canchas_mas_usadas,
     turnos_mas_usados, jugadores_por_facultad_y_tipo, obtener_jugadores_sin_minutos,
@@ -209,6 +210,17 @@ class TestPartidosGolesYTarjetas(unittest.TestCase):
         self.assertEqual(len(tarjetas), 1)
         id_tarjeta = tarjetas[0]["id_tarjeta"]
 
+        # Si el partido ya está jugado, no se debe permitir eliminar tarjetas
+        conn = obtener_conexion()
+        cur = conn.cursor()
+        cur.execute("UPDATE partido SET estado = 'jugado' WHERE id_partido = %s", (id_p,))
+        conn.commit()
+        self.assertFalse(eliminar_tarjeta(id_tarjeta))
+        cur.execute("UPDATE partido SET estado = 'programado' WHERE id_partido = %s", (id_p,))
+        conn.commit()
+        cur.close()
+        conn.close()
+
         self.assertTrue(eliminar_tarjeta(id_tarjeta))
         self.assertEqual(len(obtener_tarjetas_partido(id_p)), 0)
 
@@ -249,6 +261,60 @@ class TestReportesEstadisticos(unittest.TestCase):
         self.assertIn("total", efect)
 
         self.assertGreater(len(goles_por_tipo_jugador(id_torneo)), 0)
+
+
+class TestFrontendRutas(unittest.TestCase):
+
+    def setUp(self):
+        app.config["TESTING"] = True
+        self.client = app.test_client()
+
+    def _login_como(self, rol="admin"):
+        with self.client.session_transaction() as sess:
+            sess["usuario"] = {"correo": f"{rol}@ucu.edu.uy", "rol": rol}
+
+    def test_paginas_publicas_y_bootstrap_js(self):
+        res_index = self.client.get("/")
+        self.assertEqual(res_index.status_code, 200)
+        html_index = res_index.get_data(as_text=True)
+        self.assertIn("bootstrap.bundle.min.js", html_index)
+
+        res_login = self.client.get("/login")
+        self.assertEqual(res_login.status_code, 200)
+
+        res_cons = self.client.get("/consultas-publicas?id_torneo=1")
+        self.assertEqual(res_cons.status_code, 200)
+        html_cons = res_cons.get_data(as_text=True)
+        self.assertIn("Tabla de Posiciones", html_cons)
+        self.assertIn("Tabla de Fair Play", html_cons)
+
+    def test_rutas_admin(self):
+        self._login_como("admin")
+        rutas_get = [
+            "/admin",
+            "/admin/equipos",
+            "/admin/equipos/1/plantel",
+            "/admin/jugadores",
+            "/admin/jugadores?id_facultad=1",
+            "/admin/sanciones?id_torneo=1",
+            "/admin/partidos?id_torneo=1&numero_fecha=1",
+            "/admin/complejos",
+            "/admin/usuarios",
+        ]
+        for ruta in rutas_get:
+            res = self.client.get(ruta)
+            self.assertEqual(res.status_code, 200, f"Fallo en GET {ruta}")
+
+    def test_rutas_planillero_y_acta_plantel_ci(self):
+        self._login_como("planillero")
+        res_panel = self.client.get("/planillero?id_torneo=1&numero_fecha=4")
+        self.assertEqual(res_panel.status_code, 200)
+
+        res_acta = self.client.get("/planillero/partido/10")
+        self.assertEqual(res_acta.status_code, 200)
+        html_acta = res_acta.get_data(as_text=True)
+        # Verificar que las CIs del plantel local/visitante se rendericen en el desplegable de sugerencias
+        self.assertIn("CI 50100011", html_acta)
 
 
 if __name__ == "__main__":
