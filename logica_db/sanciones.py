@@ -80,22 +80,32 @@ def _aplicar_sanciones_del_partido(cursor, id_partido, id_torneo, fecha_sancion)
     cursor.execute(query_amarillas, (id_partido,))
     jugadores_amarillas = cursor.fetchall()
 
-    query_contar = """
+    query_contar_amarillas = """
         SELECT COUNT(*) AS total
         FROM tarjeta t
         JOIN partido p ON t.id_partido = p.id_partido
         WHERE t.ci_jugador = %s AND p.id_torneo = %s AND t.color = 'amarilla'
     """
+
+    query_sanciones_previas = """
+        SELECT COUNT(*) AS total
+        FROM sancion_jugador sj
+        WHERE ci_jugador = %s AND id_torneo = %s AND motivo = 'acumulación de amarillas'
+    """
+
     for j in jugadores_amarillas:
-        cursor.execute(query_contar, (j["ci_jugador"], id_torneo))
+        cursor.execute(query_contar_amarillas, (j["ci_jugador"], id_torneo))
         conteo = cursor.fetchone()
         total_amarillas = conteo["total"] if conteo else 0
 
-        if total_amarillas > 0 and total_amarillas % 3 == 0:
-            _registrar_sancion_si_no_existe(
-                cursor, j["ci_jugador"], id_torneo, "acumulación de amarillas", fecha_sancion
-            )
+        cursor.execute(query_sanciones_previas, (j["ci_jugador"], id_torneo))
+        previas = cursor.fetchone()
+        sanciones_previas = previas["total"] if previas else 0
 
+        if total_amarillas // 3 > sanciones_previas:
+            _registrar_sancion_si_no_existe(
+                cursor,j["ci_jugador"] , id_torneo, "acumulación de amarillas", fecha_sancion
+            )
 
 # generar_sanciones_automaticas(id_partido) -> bool (True si proceso rojas y amarillas acumuladas, False si hubo error)
 def generar_sanciones_automaticas(id_partido):
