@@ -42,7 +42,7 @@ id_equipo INT AUTO_INCREMENT PRIMARY KEY,
 nombre VARCHAR(255) NOT NULL,
 id_torneo INT,
 id_facultad INT,
-ci_capitan INT,
+ci_capitan INT UNIQUE,
 FOREIGN KEY (id_torneo) REFERENCES torneo(id_torneo),
 FOREIGN KEY (id_facultad) REFERENCES facultad(id_facultad),
 FOREIGN KEY (ci_capitan) REFERENCES jugador(ci)
