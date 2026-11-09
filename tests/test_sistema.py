@@ -9,17 +9,19 @@ from logica_db.jugadores import (
 )
 from logica_db.equipos import (
     crear_equipo, modificar_equipo, eliminar_equipo, obtener_equipo,
-    obtener_plantel, quitar_jugador_de_plantel
+    agregar_jugador, obtener_plantel, quitar_jugador_de_plantel
 )
 from logica_db.sanciones import (
     crear_sancion, modificar_sancion, eliminar_sancion, listar_sanciones_por_torneo,
     jugador_esta_suspendido, generar_sanciones_automaticas
 )
 from logica_db.partidos import (
-    obtener_partido, eliminar_partido, registrar_gol, modificar_gol, eliminar_gol,
+    programar_partido, modificar_partido, obtener_partido, eliminar_partido,
+    registrar_jugador_en_planilla, registrar_gol, modificar_gol, eliminar_gol,
     obtener_goles_partido, registrar_tarjeta, eliminar_tarjeta,
-    obtener_tarjetas_partido
+    obtener_tarjetas_partido, cerrar_partido_como_jugado
 )
+from logica_db.usuarios import crear_usuario, validar_login, existe_administrador
 from app import app
 from logica_db.reportes import (
     tabla_posiciones, goleadores, promedios_goles, canchas_mas_usadas,
@@ -89,6 +91,64 @@ class TestJugadoresYEquipos(unittest.TestCase):
 
         if eq["ci_capitan"]:
             modificar_equipo(1, ci_capitan=eq["ci_capitan"])
+
+    def test_cinco_reglas_plantel_y_baja_capitan(self):
+        # Regla 1: No permite inscribir si el torneo no está en estado 'inscripción' (Torneo 1 está 'en curso')
+        self.assertFalse(agregar_jugador(1, 50100011, 1, 99))
+
+        conn = obtener_conexion()
+        cur = conn.cursor(dictionary=True)
+        # Crear torneo temporal en estado 'inscripción'
+        cur.execute("""
+            INSERT INTO torneo (nombre, año, semestre, fecha_inicio, fecha_fin, estado)
+            VALUES ('Torneo Test Inscripcion', 2027, 1, '2027-03-01', '2027-07-01', 'inscripción')
+        """)
+        id_torneo_test = cur.lastrowid
+        conn.commit()
+
+        try:
+            self.assertTrue(crear_equipo("Equipo Test A", id_torneo_test, 1))
+            self.assertTrue(crear_equipo("Equipo Test B", id_torneo_test, 1))
+            cur.execute("SELECT id_equipo FROM equipo WHERE id_torneo = %s ORDER BY id_equipo ASC", (id_torneo_test,))
+            equipos_t = cur.fetchall()
+            id_eq_a = equipos_t[0]["id_equipo"]
+            id_eq_b = equipos_t[1]["id_equipo"]
+
+            # Regla 2: Misma facultad (50300031 es de Facultad 2, Equipo A es de Facultad 1)
+            self.assertFalse(agregar_jugador(id_eq_a, 50300031, id_torneo_test, 10))
+
+            # Inscripción válida de jugador de Facultad 1 (50100011)
+            self.assertTrue(agregar_jugador(id_eq_a, 50100011, id_torneo_test, 1))
+
+            # Regla 3: Jugador no puede estar en dos equipos en el mismo torneo
+            self.assertFalse(agregar_jugador(id_eq_b, 50100011, id_torneo_test, 1))
+
+            # Regla 4: Máximo 2 docentes/funcionarios (50100015 es docente, 50100016 es funcionario en Fac 1)
+            self.assertTrue(agregar_jugador(id_eq_a, 50100015, id_torneo_test, 2))
+            self.assertTrue(agregar_jugador(id_eq_a, 50100016, id_torneo_test, 3))
+            # 50200026 es un 3er docente de Facultad 1: debe ser rechazado
+            self.assertFalse(agregar_jugador(id_eq_a, 50200026, id_torneo_test, 4))
+
+            # Regla 5: Cupo máximo de 10 jugadores por equipo (ya tiene 3, agregamos 7 estudiantes más de Fac 1 = 10)
+            cis_extra = [50100012, 50100013, 50100014, 50100017, 50200021, 50200022, 50200023]
+            for idx, ci_ext in enumerate(cis_extra, start=4):
+                self.assertTrue(agregar_jugador(id_eq_a, ci_ext, id_torneo_test, idx))
+
+            # El jugador #11 de Facultad 1 (50200024) debe ser rechazado por cupo máximo de 10
+            self.assertFalse(agregar_jugador(id_eq_a, 50200024, id_torneo_test, 11))
+
+            # Designar capitán a 50100011 y verificar que al quitarlo del plantel ci_capitan queda en NULL
+            self.assertTrue(modificar_equipo(id_eq_a, ci_capitan=50100011))
+            self.assertEqual(obtener_equipo(id_eq_a)["ci_capitan"], 50100011)
+            self.assertTrue(quitar_jugador_de_plantel(id_eq_a, 50100011, id_torneo_test))
+            self.assertIsNone(obtener_equipo(id_eq_a)["ci_capitan"])
+        finally:
+            cur.execute("DELETE FROM equipo_jugador_torneo WHERE id_torneo = %s", (id_torneo_test,))
+            cur.execute("DELETE FROM equipo WHERE id_torneo = %s", (id_torneo_test,))
+            cur.execute("DELETE FROM torneo WHERE id_torneo = %s", (id_torneo_test,))
+            conn.commit()
+            cur.close()
+            conn.close()
 
 
 class TestSanciones(unittest.TestCase):
@@ -230,6 +290,103 @@ class TestPartidosGolesYTarjetas(unittest.TestCase):
         self.assertFalse(bool(p_viejo["puede_corregir_resultado"]))
 
         self.assertTrue(eliminar_partido(id_p))
+
+    def test_reglas_programar_y_modificar_partido(self):
+        # 1. No puede jugar un equipo contra sí mismo
+        self.assertFalse(programar_partido(1, 5, 1, 1, "2026-12-01", 1, "Cancha 1", 1))
+
+        # 2. Equipos 1 y 2 ya se enfrentaron en el Torneo 1 (Partido #1 en Fecha 1)
+        self.assertFalse(programar_partido(1, 5, 1, 2, "2026-12-01", 1, "Cancha 1", 1))
+
+        # 3. En Fecha 1, los equipos 1 y 3 ya tienen partido jugado/programado
+        self.assertFalse(programar_partido(1, 1, 1, 6, "2026-12-02", 1, "Cancha 1", 1))
+
+        # 4. Cancha ocupada en el mismo día y turno (2026-11-10, Turno 1, Cancha 1, Complejo 1 ya está en Partido #10)
+        self.assertFalse(programar_partido(1, 5, 3, 5, "2026-11-10", 1, "Cancha 1", 1))
+
+        # 5. Un partido ya 'jugado' (Partido #1) no se puede modificar
+        self.assertFalse(modificar_partido(1, "2026-12-10", 1, "Cancha 1", 1, "postergado"))
+
+    def test_planilla_suspension_ventana48h_y_cierre(self):
+        # Ventana de 48h expirada en Partido #1 (jugado en octubre 2026): no permite registrar, modificar ni eliminar goles
+        self.assertFalse(registrar_gol(1, 50100011, 10, False))
+        goles_p1 = obtener_goles_partido(1)
+        if goles_p1:
+            self.assertFalse(modificar_gol(goles_p1[0]["id_gol"], 99, False))
+            self.assertFalse(eliminar_gol(goles_p1[0]["id_gol"], 1))
+
+        conn = obtener_conexion()
+        cur = conn.cursor(dictionary=True)
+        # Crear partido programado en el futuro para probar bloqueo de cierre antes de hora y validación de suspendidos
+        cur.execute("""
+            INSERT INTO partido (id_torneo, numero_fecha, id_equipo_local, id_equipo_visitante, dia, id_turno, nombre_cancha, id_complejo, estado)
+            VALUES (1, 25, 1, 2, '2099-12-31', 1, 'Cancha 1', 1, 'programado')
+        """)
+        id_p = cur.lastrowid
+        conn.commit()
+
+        try:
+            # Jugador ajeno a los equipos 1 y 2 (50300031 es del equipo 5) no puede entrar en la planilla
+            self.assertFalse(registrar_jugador_en_planilla(id_p, 50300031, 5))
+
+            # Sancionar a 50100011 para la fecha 25 y comprobar que no puede inscribirse en la planilla
+            crear_sancion(50100011, 1, "disciplinaria", 25, 1)
+            self.assertFalse(registrar_jugador_en_planilla(id_p, 50100011, 1))
+            cur.execute("DELETE FROM sancion_jugador WHERE ci_jugador = 50100011 AND numero_fecha_inicio = 25")
+            conn.commit()
+
+            # Ya sin sanción, 50100011 sí puede inscribirse en la planilla
+            self.assertTrue(registrar_jugador_en_planilla(id_p, 50100011, 1))
+
+            # No se puede cerrar el partido como jugado porque su fecha ('2099-12-31') aún no transcurrió
+            self.assertFalse(cerrar_partido_como_jugado(id_p))
+
+            # Registrar tarjeta roja a 50100011, cambiar día a fecha pasada y cerrar partido
+            self.assertTrue(registrar_tarjeta(id_p, 50100011, 35, "roja"))
+            cur.execute("UPDATE partido SET dia = '2026-10-01' WHERE id_partido = %s", (id_p,))
+            conn.commit()
+
+            self.assertTrue(cerrar_partido_como_jugado(id_p))
+            # Verificar que se creó la sanción automática por roja para la fecha siguiente (26)
+            self.assertTrue(jugador_esta_suspendido(50100011, 1, 26))
+        finally:
+            cur.execute("DELETE FROM sancion_jugador WHERE ci_jugador = 50100011 AND numero_fecha_inicio IN (25, 26)")
+            cur.execute("DELETE FROM tarjeta WHERE id_partido = %s", (id_p,))
+            cur.execute("DELETE FROM planilla_partido WHERE id_partido = %s", (id_p,))
+            cur.execute("DELETE FROM partido WHERE id_partido = %s", (id_p,))
+            conn.commit()
+            cur.close()
+            conn.close()
+
+
+class TestUsuariosYLogin(unittest.TestCase):
+
+    def test_crear_y_validar_usuario(self):
+        correo_test = "test_unit_user@correo.ucu.edu.uy"
+        conn = obtener_conexion()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM login WHERE correo = %s", (correo_test,))
+        conn.commit()
+
+        try:
+            # Validaciones de formato de correo, longitud de contraseña y rol
+            self.assertFalse(crear_usuario("invalido@gmail.com", "1234", "planillero"))
+            self.assertFalse(crear_usuario(correo_test, "123", "planillero"))
+            self.assertFalse(crear_usuario(correo_test, "1234", "invitado"))
+
+            # Creación válida y login con hash
+            self.assertTrue(crear_usuario(correo_test, "claveSegura123", "planillero"))
+            usuario = validar_login(correo_test, "claveSegura123")
+            self.assertIsNotNone(usuario)
+            self.assertEqual(usuario["rol"], "planillero")
+
+            # Contraseña incorrecta
+            self.assertIsNone(validar_login(correo_test, "claveErronea"))
+        finally:
+            cur.execute("DELETE FROM login WHERE correo = %s", (correo_test,))
+            conn.commit()
+            cur.close()
+            conn.close()
 
 
 class TestReportesEstadisticos(unittest.TestCase):
