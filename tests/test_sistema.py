@@ -137,10 +137,10 @@ class TestJugadoresYEquipos(unittest.TestCase):
             # El jugador #11 de Facultad 1 (50200024) debe ser rechazado por cupo máximo de 10
             self.assertFalse(agregar_jugador(id_eq_a, 50200024, id_torneo_test, 11))
 
-            # Designar capitán a 50100011 y verificar que al quitarlo del plantel ci_capitan queda en NULL
-            self.assertTrue(modificar_equipo(id_eq_a, ci_capitan=50100011))
-            self.assertEqual(obtener_equipo(id_eq_a)["ci_capitan"], 50100011)
-            self.assertTrue(quitar_jugador_de_plantel(id_eq_a, 50100011, id_torneo_test))
+            # Designar capitán a 50100012 (no es capitán de otro equipo) y verificar que al quitarlo del plantel ci_capitan queda en NULL
+            self.assertTrue(modificar_equipo(id_eq_a, ci_capitan=50100012))
+            self.assertEqual(obtener_equipo(id_eq_a)["ci_capitan"], 50100012)
+            self.assertTrue(quitar_jugador_de_plantel(id_eq_a, 50100012, id_torneo_test))
             self.assertIsNone(obtener_equipo(id_eq_a)["ci_capitan"])
         finally:
             cur.execute("DELETE FROM equipo_jugador_torneo WHERE id_torneo = %s", (id_torneo_test,))
@@ -421,6 +421,24 @@ class TestReportesEstadisticos(unittest.TestCase):
 
 
 class TestFrontendRutas(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls._correo_admin_test = "admin_test_suite@correo.ucu.edu.uy"
+        cls._admin_creado = False
+        if not existe_administrador():
+            crear_usuario(cls._correo_admin_test, "AdminTest123", "admin")
+            cls._admin_creado = True
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls._admin_creado:
+            conn = obtener_conexion()
+            cur = conn.cursor()
+            cur.execute("DELETE FROM login WHERE correo = %s", (cls._correo_admin_test,))
+            conn.commit()
+            cur.close()
+            conn.close()
 
     def setUp(self):
         app.config["TESTING"] = True
