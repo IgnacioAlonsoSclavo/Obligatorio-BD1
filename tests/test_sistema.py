@@ -13,7 +13,7 @@ from logica_db.equipos import (
 )
 from logica_db.sanciones import (
     crear_sancion, modificar_sancion, eliminar_sancion, listar_sanciones_por_torneo,
-    jugador_esta_suspendido
+    jugador_esta_suspendido, generar_sanciones_automaticas
 )
 from logica_db.partidos import (
     eliminar_partido, registrar_gol, modificar_gol, eliminar_gol,
@@ -115,6 +115,53 @@ class TestSanciones(unittest.TestCase):
 
         self.assertFalse(modificar_sancion(id_sanc, "invalido", 11, 2))
         self.assertTrue(eliminar_sancion(id_sanc))
+
+    def test_filtrar_amarillas_por_estado(self):
+        ci = 50100016
+        id_torneo = 1
+        conn = obtener_conexion()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO partido (id_torneo, numero_fecha, id_equipo_local, id_equipo_visitante, dia, id_turno, nombre_cancha, id_complejo, estado)
+            VALUES (1, 15, 1, 2, '2026-11-20', 1, 'Cancha 1', 1, 'programado')
+        """)
+        id_prog = cur.lastrowid
+        cur.execute("INSERT INTO tarjeta (id_partido, ci_jugador, minuto, color) VALUES (%s, %s, 10, 'amarilla')", (id_prog, ci))
+        cur.execute("INSERT INTO tarjeta (id_partido, ci_jugador, minuto, color) VALUES (%s, %s, 20, 'amarilla')", (id_prog, ci))
+        cur.execute("INSERT INTO tarjeta (id_partido, ci_jugador, minuto, color) VALUES (%s, %s, 30, 'amarilla')", (id_prog, ci))
+        conn.commit()
+
+        cur.execute("""
+            INSERT INTO partido (id_torneo, numero_fecha, id_equipo_local, id_equipo_visitante, dia, id_turno, nombre_cancha, id_complejo, estado)
+            VALUES (1, 16, 1, 2, '2026-11-21', 1, 'Cancha 1', 1, 'programado')
+        """)
+        id_cerrar = cur.lastrowid
+        cur.execute("INSERT INTO tarjeta (id_partido, ci_jugador, minuto, color) VALUES (%s, %s, 15, 'amarilla')", (id_cerrar, ci))
+        conn.commit()
+
+        generar_sanciones_automaticas(id_cerrar)
+
+        cur.execute("SELECT id_sancion FROM sancion_jugador WHERE ci_jugador = %s AND motivo = 'acumulación de amarillas' AND numero_fecha_inicio = 17", (ci,))
+        self.assertIsNone(cur.fetchone())
+
+        cur.execute("DELETE FROM tarjeta WHERE id_partido IN (%s, %s)", (id_prog, id_cerrar))
+        cur.execute("DELETE FROM partido WHERE id_partido IN (%s, %s)", (id_prog, id_cerrar))
+        cur.execute("DELETE FROM sancion_jugador WHERE ci_jugador = %s AND id_torneo = %s AND motivo = 'acumulación de amarillas' AND numero_fecha_inicio = 17", (ci, id_torneo))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+    def test_datos_prueba_consistencia(self):
+        conn = obtener_conexion()
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT 1 FROM planilla_partido WHERE id_partido = 8 AND ci_jugador = 50200025")
+        self.assertIsNotNone(cur.fetchone())
+        cur.execute("SELECT 1 FROM planilla_partido WHERE id_partido = 9 AND ci_jugador = 50500056")
+        self.assertIsNone(cur.fetchone())
+        cur.execute("SELECT 1 FROM planilla_partido WHERE id_partido = 9 AND ci_jugador = 50500055")
+        self.assertIsNotNone(cur.fetchone())
+        cur.close()
+        conn.close()
 
 
 class TestPartidosGolesYTarjetas(unittest.TestCase):

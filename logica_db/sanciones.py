@@ -85,6 +85,7 @@ def _aplicar_sanciones_del_partido(cursor, id_partido, id_torneo, fecha_sancion)
         FROM tarjeta t
         JOIN partido p ON t.id_partido = p.id_partido
         WHERE t.ci_jugador = %s AND p.id_torneo = %s AND t.color = 'amarilla'
+          AND (p.estado = 'jugado' OR p.id_partido = %s)
     """
 
     query_sanciones_previas = """
@@ -94,7 +95,7 @@ def _aplicar_sanciones_del_partido(cursor, id_partido, id_torneo, fecha_sancion)
     """
 
     for j in jugadores_amarillas:
-        cursor.execute(query_contar_amarillas, (j["ci_jugador"], id_torneo))
+        cursor.execute(query_contar_amarillas, (j["ci_jugador"], id_torneo, id_partido))
         conteo = cursor.fetchone()
         total_amarillas = conteo["total"] if conteo else 0
 
