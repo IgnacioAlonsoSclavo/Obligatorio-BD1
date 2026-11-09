@@ -23,14 +23,14 @@ from logica_db.reportes import (
     efectividad_local_visitante, goles_por_tipo_jugador
 )
 from logica_db.partidos import (
-    programar_partido, modificar_partido, listar_partidos_por_fecha, obtener_partido,
-    registrar_jugador_en_planilla, registrar_gol, registrar_tarjeta,
+    programar_partido, modificar_partido, eliminar_partido, listar_partidos_por_fecha, obtener_partido,
+    registrar_jugador_en_planilla, registrar_gol, modificar_gol, eliminar_gol, registrar_tarjeta,
     cerrar_partido_como_jugado, obtener_planilla_partido, obtener_resultado_partido,
     obtener_goles_partido, obtener_tarjetas_partido, listar_canchas, listar_turnos
 )
 from logica_db.complejos import (
-    listar_complejos, crear_complejo, eliminar_complejo,
-    listar_canchas_completo, crear_cancha, eliminar_cancha
+    listar_complejos, crear_complejo, modificar_complejo, eliminar_complejo,
+    listar_canchas_completo, crear_cancha, modificar_cancha, eliminar_cancha
 )
 
 app = Flask(__name__)
@@ -210,7 +210,7 @@ def admin_designar_capitan(id_equipo, ci):
     if modificar_equipo(id_equipo, ci_capitan=ci):
         flash(f"Capitán actualizado exitosamente (CI: {ci}).", "success")
     else:
-        flash("Error al designar capitán.", "danger")
+        flash("Error al designar capitán. El jugador debe pertenecer al plantel del equipo.", "danger")
     return redirect(url_for("admin_plantel", id_equipo=id_equipo))
 
 
@@ -457,6 +457,21 @@ def admin_modificar_partido(id_partido):
     return redirect(url_for("admin_partidos", id_torneo=id_torneo, numero_fecha=numero_fecha))
 
 
+@app.route("/admin/partidos/<int:id_partido>/eliminar", methods=["POST"])
+@admin_requerido
+def admin_eliminar_partido(id_partido):
+    partido = obtener_partido(id_partido)
+    id_torneo = partido["id_torneo"] if partido else 1
+    numero_fecha = partido["numero_fecha"] if partido else 1
+
+    if eliminar_partido(id_partido):
+        flash(f"Partido #{id_partido} eliminado exitosamente.", "success")
+    else:
+        flash("No se pudo eliminar el partido. Los partidos en estado 'jugado' no pueden eliminarse por reglamento.", "danger")
+
+    return redirect(url_for("admin_partidos", id_torneo=id_torneo, numero_fecha=numero_fecha))
+
+
 # 5. Gestión de Complejos y Canchas
 @app.route("/admin/complejos")
 @admin_requerido
@@ -492,6 +507,21 @@ def admin_eliminar_complejo(id_complejo):
     return redirect(url_for("admin_complejos"))
 
 
+@app.route("/admin/complejos/<int:id_complejo>/modificar", methods=["POST"])
+@admin_requerido
+def admin_modificar_complejo(id_complejo):
+    nombre = request.form.get("nombre", "").strip()
+    direccion = request.form.get("direccion", "").strip()
+    departamento = request.form.get("departamento", "").strip()
+
+    if modificar_complejo(id_complejo, nombre, direccion, departamento):
+        flash(f"Complejo '{nombre}' modificado exitosamente.", "success")
+    else:
+        flash("Error al modificar el complejo. Verifique que los campos no estén vacíos.", "danger")
+
+    return redirect(url_for("admin_complejos"))
+
+
 @app.route("/admin/canchas/crear", methods=["POST"])
 @admin_requerido
 def admin_crear_cancha():
@@ -518,6 +548,23 @@ def admin_eliminar_cancha():
         flash("Cancha eliminada exitosamente.", "success")
     else:
         flash("No se pudo eliminar la cancha. Verifique que no tenga partidos asignados.", "danger")
+
+    return redirect(url_for("admin_complejos"))
+
+
+@app.route("/admin/canchas/modificar", methods=["POST"])
+@admin_requerido
+def admin_modificar_cancha():
+    nombre_cancha = request.form.get("nombre_cancha", "").strip()
+    id_complejo = request.form.get("id_complejo", type=int)
+    nuevo_nombre = request.form.get("nuevo_nombre", "").strip()
+    superficie = request.form.get("superficie", "sintético").strip()
+    techada = request.form.get("techada") in ("1", "true", "True", True)
+
+    if modificar_cancha(nombre_cancha, id_complejo, nuevo_nombre, superficie, techada):
+        flash(f"Cancha '{nuevo_nombre}' modificada exitosamente.", "success")
+    else:
+        flash("Error al modificar la cancha. Verifique que el nuevo nombre no esté duplicado.", "danger")
 
     return redirect(url_for("admin_complejos"))
 
@@ -625,6 +672,31 @@ def planillero_registrar_gol(id_partido):
         flash("Gol registrado exitosamente.", "success")
     else:
         flash("No se pudo registrar el gol. El jugador debe figurar previamente en la planilla de este partido.", "danger")
+
+    return redirect(url_for("planillero_acta", id_partido=id_partido))
+
+
+@app.route("/planillero/partido/<int:id_partido>/gol/<int:id_gol>/modificar", methods=["POST"])
+@login_requerido
+def planillero_modificar_gol(id_partido, id_gol):
+    minuto = request.form.get("minuto", type=int)
+    autogol = request.form.get("autogol") in ("1", "true", "True", True)
+
+    if modificar_gol(id_gol, minuto, autogol):
+        flash("Gol modificado exitosamente.", "success")
+    else:
+        flash("No se pudo modificar el gol. Verifique los datos o si ya expiró el plazo reglamentario de 48 horas.", "danger")
+
+    return redirect(url_for("planillero_acta", id_partido=id_partido))
+
+
+@app.route("/planillero/partido/<int:id_partido>/gol/<int:id_gol>/eliminar", methods=["POST"])
+@login_requerido
+def planillero_eliminar_gol(id_partido, id_gol):
+    if eliminar_gol(id_gol, id_partido):
+        flash("Gol eliminado exitosamente.", "success")
+    else:
+        flash("No se pudo eliminar el gol. Verifique si el partido sigue dentro de las 48 horas reglamentarias.", "danger")
 
     return redirect(url_for("planillero_acta", id_partido=id_partido))
 

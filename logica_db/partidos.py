@@ -190,6 +190,41 @@ def modificar_partido(id_partido, dia, id_turno, nombre_cancha, id_complejo, est
         cursor.close()
         conexion.close()
 
+# eliminar_partido(id_partido) -> bool (True si se elimino, False si no existe o es un partido jugado)
+def eliminar_partido(id_partido):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor(dictionary=True)
+    try:
+        # Verificar que el partido exista y consultar su estado
+        cursor.execute("SELECT estado FROM partido WHERE id_partido = %s", (id_partido,))
+        partido = cursor.fetchone()
+        if not partido:
+            print("Error: El partido no existe.")
+            return False
+
+        # Regla reglamentaria oficial: Un partido jugado no puede eliminarse
+        if partido["estado"] == "jugado":
+            print("Error: Un partido jugado no puede eliminarse por reglamento.")
+            return False
+
+        # Limpiar registros asociados si los tuviera (goles, tarjetas, planilla)
+        cursor.execute("DELETE FROM gol WHERE id_partido = %s", (id_partido,))
+        cursor.execute("DELETE FROM tarjeta WHERE id_partido = %s", (id_partido,))
+        cursor.execute("DELETE FROM planilla_partido WHERE id_partido = %s", (id_partido,))
+
+        # Eliminar el partido
+        cursor.execute("DELETE FROM partido WHERE id_partido = %s", (id_partido,))
+        conexion.commit()
+        print("Partido eliminado exitosamente.")
+        return True
+    except Error as e:
+        conexion.rollback()
+        print(f"Error al eliminar partido: {e}")
+        return False
+    finally:
+        cursor.close()
+        conexion.close()
+
 # listar_partidos_por_fecha(id_torneo, numero_fecha) -> list de dicts con los partidos de la fecha
 def listar_partidos_por_fecha(id_torneo, numero_fecha):
     conexion = obtener_conexion()
@@ -301,6 +336,105 @@ def registrar_gol(id_partido, ci_jugador, minuto, autogol):
               ) \
             """
     return _insertar_en_partido(query, (minuto, bool(autogol), id_partido, ci_jugador))
+
+# modificar_gol(id_gol, minuto, autogol) -> bool (True si se modifico, False si no cumple la ventana de 48h o no existe)
+def modificar_gol(id_gol, minuto, autogol):
+    if type(minuto) is not int or minuto < 0 or autogol not in (True, False, 0, 1):
+        return False
+
+    conexion = obtener_conexion()
+    cursor = conexion.cursor(dictionary=True)
+    try:
+        # Verificar existencia del gol y validar ventana reglamentaria de 48 horas
+        query = """
+                UPDATE gol g
+                JOIN partido p ON p.id_partido = g.id_partido
+                LEFT JOIN turno t ON t.id_turno = p.id_turno
+                SET g.minuto = %s, g.autogol = %s
+                WHERE g.id_gol = %s
+                  AND (
+                      p.estado = 'programado'
+                      OR (
+                          p.estado = 'jugado'
+                          AND TIMESTAMP(p.dia, t.hora_fin) >= NOW() - INTERVAL 48 HOUR
+                      )
+                  )
+                """
+        cursor.execute(query, (minuto, bool(autogol), id_gol))
+        conexion.commit()
+
+        if cursor.rowcount > 0:
+            print("Gol modificado exitosamente.")
+            return True
+
+        # Si rowcount es 0, verificar si el gol existe y si la ventana de 48h sigue abierta (los valores podían ser iguales)
+        cursor.execute("""
+            SELECT 1
+            FROM gol g
+            JOIN partido p ON p.id_partido = g.id_partido
+            LEFT JOIN turno t ON t.id_turno = p.id_turno
+            WHERE g.id_gol = %s
+              AND (
+                  p.estado = 'programado'
+                  OR (
+                      p.estado = 'jugado'
+                      AND TIMESTAMP(p.dia, t.hora_fin) >= NOW() - INTERVAL 48 HOUR
+                  )
+              )
+        """, (id_gol,))
+        if cursor.fetchone():
+            return True
+
+        print("Error: El gol no existe o ya expiró la ventana reglamentaria de 48 horas.")
+        return False
+    except Error as e:
+        conexion.rollback()
+        print(f"Error al modificar gol: {e}")
+        return False
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+# eliminar_gol(id_gol, id_partido=None) -> bool (True si se elimino, False si no existe o expiro la ventana de 48h)
+def eliminar_gol(id_gol, id_partido=None):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor(dictionary=True)
+    try:
+        query = """
+                DELETE g
+                FROM gol g
+                JOIN partido p ON p.id_partido = g.id_partido
+                LEFT JOIN turno t ON t.id_turno = p.id_turno
+                WHERE g.id_gol = %s
+                  AND (%s IS NULL OR g.id_partido = %s)
+                  AND (
+                      p.estado = 'programado'
+                      OR (
+                          p.estado = 'jugado'
+                          AND TIMESTAMP(p.dia, t.hora_fin) >= NOW() - INTERVAL 48 HOUR
+                      )
+                  )
+                """
+        cursor.execute(query, (id_gol, id_partido, id_partido))
+        conexion.commit()
+
+        if cursor.rowcount > 0:
+            print("Gol eliminado exitosamente.")
+            return True
+        else:
+            print("Error: No se pudo eliminar el gol. Puede no existir o haber expirado la ventana reglamentaria de 48 horas.")
+            return False
+    except Error as e:
+        conexion.rollback()
+        print(f"Error al eliminar gol: {e}")
+        return False
+    finally:
+        cursor.close()
+        conexion.close()
+
+
+
 
 # registrar_tarjeta(id_partido, ci_jugador, minuto, color) -> bool (True si se registro, False si no esta en planilla)
 def registrar_tarjeta(id_partido, ci_jugador, minuto, color):

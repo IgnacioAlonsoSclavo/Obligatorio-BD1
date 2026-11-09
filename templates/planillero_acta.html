@@ -157,6 +157,9 @@
                         <th style="width: 55px;">Min</th>
                         <th>Jugador / Equipo</th>
                         <th>Tipo</th>
+                        {% if partido.estado == 'programado' or partido.estado == 'jugado' %}
+                        <th class="text-center" style="width: 80px;">Acción</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -175,10 +178,55 @@
                                     <span class="badge bg-success">Gol</span>
                                 {% endif %}
                             </td>
+                            {% if partido.estado == 'programado' or partido.estado == 'jugado' %}
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" data-bs-toggle="modal" data-bs-target="#modalModificarGol{{ g.id_gol }}" title="Modificar Gol">
+                                    ✏️
+                                </button>
+                                <form method="POST" action="{{ url_for('planillero_eliminar_gol', id_partido=partido.id_partido, id_gol=g.id_gol) }}" style="display:inline;" onsubmit="return confirm('¿Eliminar este gol cargado?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Eliminar Gol">
+                                        🗑️
+                                    </button>
+                                </form>
+                            </td>
+                            {% endif %}
                         </tr>
+
+                        <!-- Modal Modificar Gol -->
+                        {% if partido.estado == 'programado' or partido.estado == 'jugado' %}
+                        <div class="modal fade" id="modalModificarGol{{ g.id_gol }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-sm">
+                                <div class="modal-content">
+                                    <form method="POST" action="{{ url_for('planillero_modificar_gol', id_partido=partido.id_partido, id_gol=g.id_gol) }}">
+                                        <div class="modal-header py-2">
+                                            <h6 class="modal-title fw-bold">Modificar Gol #{{ g.id_gol }}</h6>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p class="small text-muted mb-2">{{ g.apellido }}, {{ g.nombre }} ({{ g.nombre_equipo }})</p>
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-semibold">Minuto</label>
+                                                <input type="number" name="minuto" class="form-control form-control-sm" value="{{ g.minuto }}" min="0" max="120" required>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="autogol" value="1" id="autogolCheck{{ g.id_gol }}" {% if g.autogol %}checked{% endif %}>
+                                                <label class="form-check-label small" for="autogolCheck{{ g.id_gol }}">
+                                                    ¿Es Gol en contra (Autogol)?
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer py-1">
+                                            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-sm btn-primary">Guardar Cambios</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                         {% endfor %}
                     {% else %}
-                        <tr><td colspan="3" class="text-center text-muted py-2 small">No hay goles registrados.</td></tr>
+                        <tr><td colspan="{% if partido.estado == 'programado' or partido.estado == 'jugado' %}4{% else %}3{% endif %}" class="text-center text-muted py-2 small">No hay goles registrados.</td></tr>
                     {% endif %}
                 </tbody>
             </table>

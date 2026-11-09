@@ -25,7 +25,7 @@
                 <th>Nombre del Complejo</th>
                 <th>Dirección</th>
                 <th>Departamento</th>
-                <th class="text-center" style="width: 100px;">Acciones</th>
+                <th class="text-center" style="width: 170px;">Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -36,9 +36,43 @@
                 <td>{{ co.dirección }}</td>
                 <td><span class="badge bg-light text-dark border">{{ co.departamento }}</span></td>
                 <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="modal" data-bs-target="#modalModificarComplejo{{ co.id_complejo }}">
+                        ✏️ Modificar
+                    </button>
                     <form method="POST" action="{{ url_for('admin_eliminar_complejo', id_complejo=co.id_complejo) }}" style="display:inline;" onsubmit="return confirm('¿Eliminar complejo {{ co.nombre }}? Se cancelará si posee canchas activas.');">
                         <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
                     </form>
+
+                    <div class="modal fade" id="modalModificarComplejo{{ co.id_complejo }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="POST" action="{{ url_for('admin_modificar_complejo', id_complejo=co.id_complejo) }}">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title fw-bold">Modificar Complejo #{{ co.id_complejo }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body text-start">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold small">Nombre del Complejo</label>
+                                            <input type="text" name="nombre" class="form-control" value="{{ co.nombre }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold small">Dirección</label>
+                                            <input type="text" name="direccion" class="form-control" value="{{ co.dirección }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold small">Departamento</label>
+                                            <input type="text" name="departamento" class="form-control" value="{{ co.departamento }}" required>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </td>
             </tr>
             {% else %}
@@ -88,7 +122,7 @@
                 <th>Complejo Perteneciente</th>
                 <th>Superficie</th>
                 <th class="text-center">Techada</th>
-                <th class="text-center" style="width: 100px;">Acciones</th>
+                <th class="text-center" style="width: 170px;">Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -105,11 +139,53 @@
                     {% endif %}
                 </td>
                 <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="modal" data-bs-target="#modalModificarCancha{{ loop.index }}">
+                        ✏️ Modificar
+                    </button>
                     <form method="POST" action="{{ url_for('admin_eliminar_cancha') }}" style="display:inline;" onsubmit="return confirm('¿Eliminar la cancha {{ c.nombre_cancha }} del complejo {{ c.nombre_complejo }}?');">
                         <input type="hidden" name="nombre_cancha" value="{{ c.nombre_cancha }}">
                         <input type="hidden" name="id_complejo" value="{{ c.id_complejo }}">
                         <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
                     </form>
+
+                    <div class="modal fade" id="modalModificarCancha{{ loop.index }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="POST" action="{{ url_for('admin_modificar_cancha') }}">
+                                    <input type="hidden" name="nombre_cancha" value="{{ c.nombre_cancha }}">
+                                    <input type="hidden" name="id_complejo" value="{{ c.id_complejo }}">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title fw-bold">Modificar Cancha</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body text-start">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold small">Nombre de la Cancha</label>
+                                            <input type="text" name="nuevo_nombre" class="form-control" value="{{ c.nombre_cancha }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold small">Superficie</label>
+                                            <select name="superficie" class="form-select" required>
+                                                <option value="sintético" {% if c.superficie == 'sintético' %}selected{% endif %}>Césped Sintético</option>
+                                                <option value="parquet" {% if c.superficie == 'parquet' %}selected{% endif %}>Parquet</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold small">¿Es Techada?</label>
+                                            <select name="techada" class="form-select" required>
+                                                <option value="1" {% if c.techada %}selected{% endif %}>Sí (Techada)</option>
+                                                <option value="0" {% if not c.techada %}selected{% endif %}>No (Abierta)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </td>
             </tr>
             {% else %}

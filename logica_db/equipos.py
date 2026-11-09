@@ -27,6 +27,23 @@ def modificar_equipo(id_equipo, nombre=None, ci_capitan=None):
     conexion = obtener_conexion()
     cursor = conexion.cursor(dictionary=True)
     try:
+        cursor.execute("SELECT id_equipo FROM equipo WHERE id_equipo = %s", (id_equipo,))
+        if not cursor.fetchone():
+            print("Error, el equipo no se encontro")
+            return False
+
+        if ci_capitan is not None:
+            query_verificar_plantel = """
+                SELECT 1
+                FROM equipo_jugador_torneo
+                WHERE id_equipo = %s AND ci_jugador = %s
+                LIMIT 1
+            """
+            cursor.execute(query_verificar_plantel, (id_equipo, ci_capitan))
+            if not cursor.fetchone():
+                print(f"Error: El jugador con CI {ci_capitan} no pertenece al plantel del equipo {id_equipo}.")
+                return False
+
         query = """
             UPDATE equipo
             SET nombre = COALESCE(%s, nombre),
@@ -35,18 +52,14 @@ def modificar_equipo(id_equipo, nombre=None, ci_capitan=None):
         """
         cursor.execute(query, (nombre, ci_capitan, id_equipo))
         conexion.commit()
-        if cursor.rowcount > 0:
-            print("Se actualizo el equipo correctamente.")
-            return True
-        print("Error, el equipo no se encontro")
-        return False
+        print("Se actualizo el equipo correctamente.")
+        return True
     except Error as e:
         conexion.rollback()
         print(f"Error al modificar equipo: {e}")
         return False
 
     finally:
-
         cursor.close()
         conexion.close()
 # eliminar_equipo(id_equipo) -> bool (True si se elimino, False si fallo)
@@ -163,11 +176,18 @@ def quitar_jugador_de_plantel(id_equipo, ci_jugador, id_torneo):
                 WHERE id_equipo = %s AND ci_jugador = %s AND id_torneo = %s
                 """
         cursor.execute(query, (id_equipo, ci_jugador, id_torneo))
-        conexion.commit()
         if cursor.rowcount > 0:
+            # Si el jugador eliminado era el capitán del equipo, se remueve la capitanía
+            cursor.execute("""
+                UPDATE equipo
+                SET ci_capitan = NULL
+                WHERE id_equipo = %s AND ci_capitan = %s
+            """, (id_equipo, ci_jugador))
+            conexion.commit()
             print("Se ha quitado el jugador del plantel.")
             return True
         else:
+            conexion.rollback()
             print("El jugador no pertenecia al plantel del equipo.")
             return False
     except Error as e:

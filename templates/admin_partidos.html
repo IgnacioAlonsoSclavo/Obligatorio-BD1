@@ -92,6 +92,11 @@
                                 <button type="button" class="btn btn-sm btn-outline-secondary mb-1 w-100" data-bs-toggle="modal" data-bs-target="#modalModificar{{ p.id_partido }}">
                                     ✏️ Modificar
                                 </button>
+                                <form method="POST" action="{{ url_for('admin_eliminar_partido', id_partido=p.id_partido) }}" onsubmit="return confirm('¿Seguro que deseas eliminar definitivamente este partido programado?');" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger mb-1 w-100">
+                                        🗑️ Eliminar
+                                    </button>
+                                </form>
                             {% else %}
                                 <span class="badge bg-light text-muted border w-100 mb-1">No modificable</span>
                             {% endif %}
