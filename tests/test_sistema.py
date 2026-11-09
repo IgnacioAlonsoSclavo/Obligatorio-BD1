@@ -16,7 +16,7 @@ from logica_db.sanciones import (
     jugador_esta_suspendido, generar_sanciones_automaticas
 )
 from logica_db.partidos import (
-    eliminar_partido, registrar_gol, modificar_gol, eliminar_gol,
+    obtener_partido, eliminar_partido, registrar_gol, modificar_gol, eliminar_gol,
     obtener_goles_partido, registrar_tarjeta, eliminar_tarjeta,
     obtener_tarjetas_partido
 )
@@ -211,6 +211,11 @@ class TestPartidosGolesYTarjetas(unittest.TestCase):
 
         self.assertTrue(eliminar_tarjeta(id_tarjeta))
         self.assertEqual(len(obtener_tarjetas_partido(id_p)), 0)
+
+        p_prog = obtener_partido(id_p)
+        self.assertTrue(bool(p_prog["puede_corregir_resultado"]))
+        p_viejo = obtener_partido(1)
+        self.assertFalse(bool(p_viejo["puede_corregir_resultado"]))
 
         self.assertTrue(eliminar_partido(id_p))
 

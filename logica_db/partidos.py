@@ -259,9 +259,16 @@ def obtener_partido(id_partido):
     cursor = conexion.cursor(dictionary=True)
     try:
         query = """
-                SELECT *
-                FROM partido
-                WHERE id_partido = %s \
+                SELECT p.*,
+                       CASE
+                           WHEN p.estado = 'programado' THEN 1
+                           WHEN p.estado = 'jugado'
+                                AND TIMESTAMP(p.dia, t.hora_fin) >= NOW() - INTERVAL 48 HOUR THEN 1
+                           ELSE 0
+                       END AS puede_corregir_resultado
+                FROM partido AS p
+                         LEFT JOIN turno AS t ON t.id_turno = p.id_turno
+                WHERE p.id_partido = %s \
                 """
         cursor.execute(query, (id_partido,))
         return cursor.fetchone()

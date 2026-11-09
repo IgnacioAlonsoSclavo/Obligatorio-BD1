@@ -157,7 +157,7 @@
                         <th style="width: 55px;">Min</th>
                         <th>Jugador / Equipo</th>
                         <th>Tipo</th>
-                        {% if partido.estado == 'programado' or partido.estado == 'jugado' %}
+                        {% if puede_corregir_resultado %}
                         <th class="text-center" style="width: 80px;">Acción</th>
                         {% endif %}
                     </tr>
@@ -178,7 +178,7 @@
                                     <span class="badge bg-success">Gol</span>
                                 {% endif %}
                             </td>
-                            {% if partido.estado == 'programado' or partido.estado == 'jugado' %}
+                            {% if puede_corregir_resultado %}
                             <td class="text-center">
                                 <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" data-bs-toggle="modal" data-bs-target="#modalModificarGol{{ g.id_gol }}" title="Modificar Gol">
                                     ✏️
@@ -193,7 +193,7 @@
                         </tr>
 
                         <!-- Modal Modificar Gol -->
-                        {% if partido.estado == 'programado' or partido.estado == 'jugado' %}
+                        {% if puede_corregir_resultado %}
                         <div class="modal fade" id="modalModificarGol{{ g.id_gol }}" tabindex="-1" aria-hidden="true">
                             <div class="modal-dialog modal-sm">
                                 <div class="modal-content">
@@ -226,12 +226,12 @@
                         {% endif %}
                         {% endfor %}
                     {% else %}
-                        <tr><td colspan="{% if partido.estado == 'programado' or partido.estado == 'jugado' %}4{% else %}3{% endif %}" class="text-center text-muted py-2 small">No hay goles registrados.</td></tr>
+                        <tr><td colspan="{% if puede_corregir_resultado %}4{% else %}3{% endif %}" class="text-center text-muted py-2 small">No hay goles registrados.</td></tr>
                     {% endif %}
                 </tbody>
             </table>
 
-            {% if partido.estado == 'programado' or partido.estado == 'jugado' %}
+            {% if puede_corregir_resultado %}
             <div class="p-2 bg-light rounded border">
                 <h6 class="fw-bold small mb-2">Registrar Nuevo Gol</h6>
                 <form method="POST" action="{{ url_for('planillero_registrar_gol', id_partido=partido.id_partido) }}" class="row g-2">
@@ -279,7 +279,7 @@
                         <th style="width: 55px;">Min</th>
                         <th>Jugador / Equipo</th>
                         <th>Tarjeta</th>
-                        {% if partido.estado == 'programado' or partido.estado == 'jugado' %}
+                        {% if puede_corregir_resultado %}
                         <th class="text-center" style="width: 60px;">Acción</th>
                         {% endif %}
                     </tr>
@@ -300,7 +300,7 @@
                                     <span class="badge bg-danger">Roja Directa</span>
                                 {% endif %}
                             </td>
-                            {% if partido.estado == 'programado' or partido.estado == 'jugado' %}
+                            {% if puede_corregir_resultado %}
                             <td class="text-center">
                                 <form method="POST" action="{{ url_for('planillero_eliminar_tarjeta', id_partido=partido.id_partido, id_tarjeta=t.id_tarjeta) }}" style="display:inline;" onsubmit="return confirm('¿Eliminar esta tarjeta?');">
                                     <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Eliminar Tarjeta">
@@ -312,7 +312,7 @@
                         </tr>
                         {% endfor %}
                     {% else %}
-                        <tr><td colspan="{% if partido.estado == 'programado' or partido.estado == 'jugado' %}4{% else %}3{% endif %}" class="text-center text-muted py-2 small">No se registraron tarjetas.</td></tr>
+                        <tr><td colspan="{% if puede_corregir_resultado %}4{% else %}3{% endif %}" class="text-center text-muted py-2 small">No se registraron tarjetas.</td></tr>
                     {% endif %}
                 </tbody>
             </table>

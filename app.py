@@ -649,6 +649,7 @@ def planillero_acta(id_partido):
     plantel_local = obtener_plantel(partido["id_equipo_local"], partido["id_torneo"])
     plantel_visitante = obtener_plantel(partido["id_equipo_visitante"], partido["id_torneo"])
     cis_en_planilla = {j["ci_jugador"] for j in planilla}
+    puede_corregir_resultado = bool(partido.get("puede_corregir_resultado"))
 
     return render_template(
         "planillero_acta.html",
@@ -659,7 +660,8 @@ def planillero_acta(id_partido):
         tarjetas=tarjetas,
         plantel_local=plantel_local,
         plantel_visitante=plantel_visitante,
-        cis_en_planilla=cis_en_planilla
+        cis_en_planilla=cis_en_planilla,
+        puede_corregir_resultado=puede_corregir_resultado
     )
 
 
