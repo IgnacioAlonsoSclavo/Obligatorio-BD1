@@ -452,6 +452,36 @@ def registrar_tarjeta(id_partido, ci_jugador, minuto, color):
             """
     return _insertar_en_partido(query, (minuto, color, id_partido, ci_jugador))
 
+
+def eliminar_tarjeta(id_tarjeta):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    try:
+        query = """
+                DELETE t
+                FROM tarjeta t
+                JOIN partido p ON p.id_partido = t.id_partido
+                LEFT JOIN turno tu ON tu.id_turno = p.id_turno
+                WHERE t.id_tarjeta = %s
+                  AND (
+                      p.estado = 'programado'
+                      OR (
+                          p.estado = 'jugado'
+                          AND TIMESTAMP(p.dia, tu.hora_fin) >= NOW() - INTERVAL 48 HOUR
+                      )
+                  )
+                """
+        cursor.execute(query, (id_tarjeta,))
+        conexion.commit()
+        return cursor.rowcount > 0
+    except Error as e:
+        conexion.rollback()
+        print(f"Error al eliminar tarjeta: {e}")
+        return False
+    finally:
+        cursor.close()
+        conexion.close()
+
 # cerrar_partido_como_jugado(id_partido) -> bool (True si se marco como jugado, False si todavia no paso la hora)
 def cerrar_partido_como_jugado(id_partido):
     conexion = obtener_conexion()

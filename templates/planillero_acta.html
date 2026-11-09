@@ -279,6 +279,9 @@
                         <th style="width: 55px;">Min</th>
                         <th>Jugador / Equipo</th>
                         <th>Tarjeta</th>
+                        {% if partido.estado == 'programado' or partido.estado == 'jugado' %}
+                        <th class="text-center" style="width: 60px;">Acción</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -297,10 +300,19 @@
                                     <span class="badge bg-danger">Roja Directa</span>
                                 {% endif %}
                             </td>
+                            {% if partido.estado == 'programado' or partido.estado == 'jugado' %}
+                            <td class="text-center">
+                                <form method="POST" action="{{ url_for('planillero_eliminar_tarjeta', id_partido=partido.id_partido, id_tarjeta=t.id_tarjeta) }}" style="display:inline;" onsubmit="return confirm('¿Eliminar esta tarjeta?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Eliminar Tarjeta">
+                                        🗑️
+                                    </button>
+                                </form>
+                            </td>
+                            {% endif %}
                         </tr>
                         {% endfor %}
                     {% else %}
-                        <tr><td colspan="3" class="text-center text-muted py-2 small">No se registraron tarjetas.</td></tr>
+                        <tr><td colspan="{% if partido.estado == 'programado' or partido.estado == 'jugado' %}4{% else %}3{% endif %}" class="text-center text-muted py-2 small">No se registraron tarjetas.</td></tr>
                     {% endif %}
                 </tbody>
             </table>

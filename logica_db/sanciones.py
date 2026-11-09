@@ -187,3 +187,46 @@ def eliminar_sancion(id_sancion):
         cursor.close()
         conexion.close()
 
+
+def modificar_sancion(id_sancion, motivo, numero_fecha_inicio, cantidad_fechas):
+    if not id_sancion or not motivo or numero_fecha_inicio is None or cantidad_fechas is None:
+        return False
+
+    motivo = motivo.strip()
+    if motivo not in ("roja", "acumulación de amarillas", "disciplinaria"):
+        return False
+
+    try:
+        numero_fecha_inicio = int(numero_fecha_inicio)
+        cantidad_fechas = int(cantidad_fechas)
+    except (ValueError, TypeError):
+        return False
+
+    if numero_fecha_inicio < 1 or cantidad_fechas < 1:
+        return False
+
+    conexion = obtener_conexion()
+    cursor = conexion.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT 1 FROM sancion_jugador WHERE id_sancion = %s", (id_sancion,))
+        if not cursor.fetchone():
+            return False
+
+        query = """
+            UPDATE sancion_jugador
+            SET motivo = %s,
+                numero_fecha_inicio = %s,
+                cantidad_fechas = %s
+            WHERE id_sancion = %s
+        """
+        cursor.execute(query, (motivo, numero_fecha_inicio, cantidad_fechas, id_sancion))
+        conexion.commit()
+        return True
+    except Error as e:
+        conexion.rollback()
+        print(f"Error al modificar sancion: {e}")
+        return False
+    finally:
+        cursor.close()
+        conexion.close()
+

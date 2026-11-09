@@ -11,7 +11,7 @@ from logica_db.jugadores import (
     crear_jugador, modificar_jugador, eliminar_jugador, listar_jugadores, listar_jugadores_por_facultad
 )
 from logica_db.sanciones import (
-    crear_sancion, eliminar_sancion, listar_sanciones_por_torneo,
+    crear_sancion, modificar_sancion, eliminar_sancion, listar_sanciones_por_torneo,
     jugador_esta_suspendido
 )
 from logica_db.reportes import (
@@ -24,7 +24,7 @@ from logica_db.reportes import (
 )
 from logica_db.partidos import (
     programar_partido, modificar_partido, eliminar_partido, listar_partidos_por_fecha, obtener_partido,
-    registrar_jugador_en_planilla, registrar_gol, modificar_gol, eliminar_gol, registrar_tarjeta,
+    registrar_jugador_en_planilla, registrar_gol, modificar_gol, eliminar_gol, registrar_tarjeta, eliminar_tarjeta,
     cerrar_partido_como_jugado, obtener_planilla_partido, obtener_resultado_partido,
     obtener_goles_partido, obtener_tarjetas_partido, listar_canchas, listar_turnos
 )
@@ -363,6 +363,22 @@ def admin_eliminar_sancion(id_sancion):
         flash("Sanción revocada con éxito.", "success")
     else:
         flash("No se pudo revocar la sanción.", "danger")
+    return redirect(url_for("admin_sanciones", id_torneo=id_torneo))
+
+
+@app.route("/admin/sanciones/<int:id_sancion>/modificar", methods=["POST"])
+@admin_requerido
+def admin_modificar_sancion(id_sancion):
+    id_torneo = request.form.get("id_torneo", 1, type=int)
+    motivo = request.form.get("motivo", "").strip()
+    numero_fecha_inicio = request.form.get("numero_fecha_inicio", type=int)
+    cantidad_fechas = request.form.get("cantidad_fechas", type=int)
+
+    if modificar_sancion(id_sancion, motivo, numero_fecha_inicio, cantidad_fechas):
+        flash("Sanción modificada correctamente.", "success")
+    else:
+        flash("Error al modificar la sanción. Verifique los datos ingresados.", "danger")
+
     return redirect(url_for("admin_sanciones", id_torneo=id_torneo))
 
 
@@ -712,6 +728,17 @@ def planillero_registrar_tarjeta(id_partido):
         flash(f"Tarjeta {color} registrada exitosamente.", "success")
     else:
         flash("No se pudo registrar la tarjeta. El jugador debe figurar previamente en la planilla.", "danger")
+
+    return redirect(url_for("planillero_acta", id_partido=id_partido))
+
+
+@app.route("/planillero/partido/<int:id_partido>/tarjeta/<int:id_tarjeta>/eliminar", methods=["POST"])
+@login_requerido
+def planillero_eliminar_tarjeta(id_partido, id_tarjeta):
+    if eliminar_tarjeta(id_tarjeta):
+        flash("Tarjeta eliminada exitosamente.", "success")
+    else:
+        flash("No se pudo eliminar la tarjeta. Verifique si el partido sigue dentro de las 48 horas reglamentarias.", "danger")
 
     return redirect(url_for("planillero_acta", id_partido=id_partido))
 

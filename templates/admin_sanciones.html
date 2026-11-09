@@ -50,7 +50,7 @@
                 <th>Desde</th>
                 <th>Hasta</th>
                 <th>Partidos</th>
-                <th class="text-center" style="width: 100px;">Acciones</th>
+                <th class="text-center" style="width: 170px;">Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -65,9 +65,49 @@
                     <td>Fecha {{ s.fecha_fin }}</td>
                     <td>{{ s.cantidad_fechas }}</td>
                     <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="modal" data-bs-target="#modalModificarSancion{{ s.id_sancion }}">
+                            ✏️ Modificar
+                        </button>
                         <form method="POST" action="{{ url_for('admin_eliminar_sancion', id_sancion=s.id_sancion, id_torneo=id_torneo) }}" style="display:inline;" onsubmit="return confirm('¿Revocar sanción?');">
                             <button type="submit" class="btn btn-sm btn-danger">Revocar</button>
                         </form>
+
+                        <div class="modal fade" id="modalModificarSancion{{ s.id_sancion }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form method="POST" action="{{ url_for('admin_modificar_sancion', id_sancion=s.id_sancion) }}">
+                                        <input type="hidden" name="id_torneo" value="{{ id_torneo }}">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title fw-bold">Modificar Sanción #{{ s.id_sancion }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body text-start">
+                                            <p class="text-muted small mb-3">{{ s.apellido }}, {{ s.nombre }} (CI: {{ s.ci_jugador }})</p>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold small">Motivo</label>
+                                                <select name="motivo" class="form-select" required>
+                                                    <option value="disciplinaria" {% if s.motivo == 'disciplinaria' %}selected{% endif %}>Disciplinaria (Tribunal)</option>
+                                                    <option value="roja" {% if s.motivo == 'roja' %}selected{% endif %}>Roja directa</option>
+                                                    <option value="acumulación de amarillas" {% if s.motivo == 'acumulación de amarillas' %}selected{% endif %}>Acumulación de amarillas</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold small">Fecha Inicio</label>
+                                                <input type="number" name="numero_fecha_inicio" class="form-control" value="{{ s.numero_fecha_inicio }}" min="1" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold small">Cantidad de Fechas</label>
+                                                <input type="number" name="cantidad_fechas" class="form-control" value="{{ s.cantidad_fechas }}" min="1" required>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
