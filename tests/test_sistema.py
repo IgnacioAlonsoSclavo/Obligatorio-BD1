@@ -154,6 +154,10 @@ class TestSanciones(unittest.TestCase):
     def test_datos_prueba_consistencia(self):
         conn = obtener_conexion()
         cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT 1 FROM planilla_partido WHERE id_partido = 5 AND ci_jugador = 50300036")
+        self.assertIsNotNone(cur.fetchone())
+        cur.execute("SELECT 1 FROM planilla_partido WHERE id_partido = 6 AND ci_jugador = 50500056")
+        self.assertIsNotNone(cur.fetchone())
         cur.execute("SELECT 1 FROM planilla_partido WHERE id_partido = 8 AND ci_jugador = 50200025")
         self.assertIsNotNone(cur.fetchone())
         cur.execute("SELECT 1 FROM planilla_partido WHERE id_partido = 9 AND ci_jugador = 50500056")
